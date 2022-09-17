@@ -62,7 +62,7 @@ module Decoder(
     always @ (Op) begin
         case (Op)
             2'b00 : begin
-                        // assert must be DP Imm or DP Reg (with no shift)
+                        // assert must be DP Imm or DP Reg (with immediate shift)
                         {Branch_toSend, MemtoReg, MemW} = 1'b0;
                         RegW = 1'b1;
                         ALUOp_toSend = 2'b11;

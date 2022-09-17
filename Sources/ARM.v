@@ -34,7 +34,7 @@
 
 //-- R15 is not stored
 //-- Save waveform file and add it to the project
-//-- Reset and launch simulation if you add interal signals to the waveform window
+//-- Reset and launch simulation if you add internal signals to the waveform window
 
 module ARM(
     input CLK,
@@ -92,11 +92,14 @@ module ARM(
     wire RegWrite ; 
     //wire MemWrite
        
-    // Shifter signals
+    // Shifter signals (no Register-shifted Register support yet)
     wire [1:0] Sh ;
     wire [4:0] Shamt5 ;
     wire [31:0] ShIn ;
     wire [31:0] ShOut ;
+    assign ShIn = RD2;
+    assign Instr[6:5] = Sh;
+    assign Instr[11:7] = Shamt5;
     
     // ALU signals
     wire [31:0] Src_A ;
@@ -119,8 +122,9 @@ module ARM(
     
     // datapath connections here
     assign WE_PC = 1 ; // Will need to control it for multi-cycle operations (Multiplication, Division) and/or Pipelining with hazard hardware.
-
-
+    
+    assign Src_B = ALUSrc ? ExtImm : ShOut;
+    
     
     // Instantiate RegFile
     RegFile RegFile1( 
