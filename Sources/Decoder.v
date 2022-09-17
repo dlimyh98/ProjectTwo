@@ -48,21 +48,24 @@ module Decoder(
     output reg [1:0] FlagW = 2'b00
     );
     
-    wire ALUOp, Branch;
-    reg ALUOp_toSend, Branch_toSend = 1'b0;
+    wire [1:0] ALUOp;
+    wire Branch;
+    reg ALUOp_toSend = 2'b00;
+    reg Branch_toSend = 1'b0;
     assign ALUOp = ALUOp_toSend;
     assign Branch = Branch_toSend;
    
     
     // Main Decoder Logic
-    // Input = Op, Funct[5], Funct[0]
+    // Input = Op, Funct[5] (I bit), Funct[0] (DP S bit, Memory L bit), Funct[3] (Memory U bit)
     // Output = RegW, MemW, MemtoReg, ALUSrc, ImmSrc, RegSrc
     always @ (Op) begin
         case (Op)
             2'b00 : begin
-                        // assert must be DP Reg or DP Imm
+                        // assert must be DP Imm or DP Reg (with no shift)
                         {Branch_toSend, MemtoReg, MemW} = 1'b0;
-                        {RegW, ALUOp_toSend} = 1'b1;
+                        RegW = 1'b1;
+                        ALUOp_toSend = 2'b11;
                         
                         if (Funct[5] == 0) begin
                             // assert DP Reg
@@ -76,11 +79,14 @@ module Decoder(
                     end
                     
             2'b01 : begin
-                        // assert must be STR or LDR
-                        {Branch_toSend, ALUOp_toSend} = 1'b0;
+                        // assert must be STR or LDR (positive/negative immediate offset)
+                        Branch_toSend = 1'b0;
                         {MemtoReg, ALUSrc} = 1'b1;    // MemToReg == X for STR
                         ImmSrc = 2'b01;
-                        RegSrc = 2'b10;    // RegSrc == X0 for LDR
+                        RegSrc = 2'b10;               // RegSrc == X0 for LDR
+                        
+                        if (Funct[3] == 0) ALUOp_toSend = 2'b10;    // U-Bit == 0 means subtract unsigned offset
+                            else ALUOp_toSend = 2'b00;              // U-Bit == 1 means add unsigned offset
                         
                         if (Funct[0] == 0) begin
                             // assert STR
@@ -95,7 +101,8 @@ module Decoder(
                     
             2'b10 : begin
                         // assert must be Branch
-                        {MemtoReg, MemW, RegW, ALUOp_toSend} = 1'b0;
+                        {MemtoReg, MemW, RegW} = 1'b0;
+                        ALUOp_toSend = 2'b00;
                         {Branch_toSend, ALUSrc} = 1'b1;
                         ImmSrc = 2'b10;
                         RegSrc = 2'b01;
@@ -103,8 +110,8 @@ module Decoder(
                     
             2'b11 : begin
                         // assert must be invalid command (all output signals X)
-                        {Branch_toSend, MemtoReg, MemW, ALUSrc, RegW, ALUOp_toSend} = 1'b0;
-                        {ImmSrc, RegSrc} = 2'b0;
+                        {Branch_toSend, MemtoReg, MemW, ALUSrc, RegW, ALUOp_toSend} = 0;
+                        {ImmSrc, RegSrc} = 0;
                     end                                      
         endcase
     end
@@ -122,27 +129,58 @@ module Decoder(
         end
     end
     
+    
     // ALU Decoder Logic
     // Input = ALUOp, Funct[4:0] (Funt[5] is I bit)
     // Output = ALUControl[1:0] and FlagW[1:0]
-    always @ (ALUOp) begin        
-        if (ALUOp == 1'b0) begin
-            // assert must be STR/LDR (assumed positive offset only)
-            // assert must be B
-            ALUControl = 2'b00;
-            FlagW = 2'b00;
-        end else begin
-            // assert must be DP instructions (positive/negative offset)
-            // TODO : STR/LDR w negative offset (extend ALUOp to 2bits)
-            // TODO : CMP and CMN
-            // TODO : Src for DP instructions with immediate shift (FlagW change)
-            FlagW = Funct[0] ? 2'b11 : 2'b00;
-            case (Funct[4:1])   // Funct[4:1] == cmd (DP) or PUBW (Memory)
-                4'b0100 : ALUControl = 2'b00;   // ADD or ADDS
-                4'b0010 : ALUControl = 2'b01;   // SUB or SUBS   
-                4'b0000 : ALUControl = 2'b10;   // AND or ANDS                  
-                4'b1100 : ALUControl = 2'b11;   // ORR or ORRS                                 
-            endcase
-        end
+    always @ (ALUOp) begin
+        case (ALUOp)
+            2'b00 : begin
+                        // assert must be positive offset STR/LDR (with unsigned offset)
+                        // assert must be B (with signed offset)
+                        ALUControl = 2'b00;
+                        FlagW = 2'b00;
+                        NoWrite = 1'b0;
+                    end
+                    
+            2'b01 : begin
+                        // assert must be negative offset STR/LDR (with unsigned offset)
+                        ALUControl = 2'b01;
+                        FlagW = 2'b00;
+                        NoWrite = 1'b0;
+                    end
+                    
+            2'b11 : begin
+                        // assert must be DP instructions (positive/negative offset)
+                        // TODO : Src for DP instructions w immediate shift (FlagW changes)
+                        FlagW = Funct[0] ? 2'b11 : 2'b00;
+                        NoWrite = 1'b0;
+                        
+                        case (Funct[4:1])   // Funct[4:1] == cmd (DP) or PUBW (Memory)
+                            4'b0100 : ALUControl = 2'b00;   // ADD or ADDS
+                            4'b0010 : ALUControl = 2'b01;   // SUB or SUBS   
+                            4'b0000 : ALUControl = 2'b10;   // AND or ANDS                  
+                            4'b1100 : ALUControl = 2'b11;   // ORR or ORRS
+                            4'b1010 : begin 
+                                ALUControl = 2'b01;   // CMP (set flags automatically)
+                                NoWrite = 1'b1;
+                            end
+                            4'b1011 : begin
+                                ALUControl = 2'b00;   // CMN (set flags automatically)
+                                NoWrite = 1'b1;
+                            end       
+                            default : begin
+                                ALUControl = 2'b00;
+                                NoWrite = 1'b0;
+                            end
+                        endcase
+                    end
+                    
+            2'b10 : begin
+                        // assert undefined
+                        {ALUControl, FlagW, NoWrite} = 0;
+                    end
+        endcase            
     end
+    
 endmodule
