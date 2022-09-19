@@ -40,23 +40,25 @@ main_loop
 ; assert that NZCV flags all initialized to 0		
 delay_loop
         ADD R7, R7, R4, LSR #2     ; R7 = R7 + (R4 >> 2)
-								   ; first iteration  : R4 >> 2 = 0b0011_0011 (R7 should be 0x33)
-								   ; second iteration : R4 >> 2 = 0b0000_1100 (R7 should be 0x66)
+								   ; first iteration  : R4 >> 2 = 0b0011_0011 (R7 should be 0x33), C flag set to 0
+								   ; second iteration : R4 >> 2 = 0b0000_1100 (R7 should be 0x66), C flag set to 1
 
         SUBS R5, R5, #1           ; decrement loop counter
-                                  ; assert that C flag always 1 (subtraction never produces borrow)
-                                  ; Z flag set to 1 iff R7 = 0, 0 otherwise
+                                  ; assert that C flag always set to 1 (subtraction never produces borrow)
+                                  ; Z flag set to 1 iff R7 = 0, otherwise 0
 
         ANDEQS R7, R7, #0x00F0    ; R7 = R7 AND #0x00F0, execute iff Z = 1 (no support for Immediate Shifting yet)
-                                  ; C flags CHANGED (change to C = 0), as calculating Src2 involves shifting (where bit shifted out is 0)
-								  ; Z flag set to 0
-								  ; if executed, [3:0] of 7-SEG should be 0
+								  ; if executed,
+                                  ; - C flags remain UNCHANGED (still C = 1)
+								  ;   if calculating Src2 involves shifting (where bit shifted out is 0), then C flag would be set to 0
+								  ; - Z flag set to 0
+								  ; - [3:0] of 7-SEG should be 0
 
         ADDEQ R7, R7, R6          ; execute if Z = 1 (should never execute)
 
-        CMP R5, #0
+        CMP R5, #0                ; Z flag set to 1 iff R5 == 0 (CMP is equivalent to SUBS discarding result)
 		BNE delay_loop	          ; Run loop by number of iterations in R4
-        CMN R5, #0
+        CMN R5, #0                ; C flag set to 0 iff R5 == 0 (CMN is equivalent to ADDS discarding result, set to 0 since addition DOESNT produce carry)
         BNE delay_loop
 		
 display_results

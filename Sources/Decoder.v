@@ -152,25 +152,39 @@ module Decoder(
                     
             2'b11 : begin
                         // assert must be DP instructions (positive/negative offset)
-                        // TODO : Src for DP instructions w immediate shift (FlagW changes)
                         FlagW = Funct[0] ? 2'b11 : 2'b00;
                         NoWrite = 1'b0;
                         
                         case (Funct[4:1])   // Funct[4:1] == cmd (DP) or PUBW (Memory)
-                            4'b0100 : ALUControl = 2'b00;   // ADD or ADDS
-                            4'b0010 : ALUControl = 2'b01;   // SUB or SUBS   
-                            4'b0000 : ALUControl = 2'b10;   // AND or ANDS                  
-                            4'b1100 : ALUControl = 2'b11;   // ORR or ORRS
-                            4'b1010 : begin 
-                                ALUControl = 2'b01;   // CMP (set flags automatically)
+                            4'b0100 : begin // ADD or ADDS (set NZCV flags)
+                                          ALUControl = 2'b00;
+                                          FlagW = (Funct[0] == 1'b1) ? 2'b11 : 2'b00;
+                                      end
+                            4'b0010 : begin // SUB or SUBS (set NZCV flags)
+                                          ALUControl = 2'b01; 
+                                          FlagW = (Funct[0] == 1'b1) ? 2'b11 : 2'b00;
+                                      end
+                            4'b0000 : begin // AND or ANDS (for now doesn't affect C flag)
+                                          ALUControl = 2'b10;
+                                          FlagW = (Funct[0] == 1'b1) ? 2'b10 : 2'b00;
+                                      end              
+                            4'b1100 : begin // ORR or ORRS (for now doesn't affect C flag)
+                                          ALUControl = 2'b11;
+                                          FlagW = (Funct[0] == 1'b1) ? 2'b10 : 2'b00;
+                                      end
+                            4'b1010 : begin // CMP (set NZCV flags automatically)
+                                ALUControl = 2'b01;
+                                FlagW = 2'b11;
                                 NoWrite = 1'b1;
                             end
-                            4'b1011 : begin
-                                ALUControl = 2'b00;   // CMN (set flags automatically)
+                            4'b1011 : begin // CMN (set NZCV flags automatically)
+                                ALUControl = 2'b00;
+                                FlagW = 2'b11;
                                 NoWrite = 1'b1;
                             end       
-                            default : begin
+                            default : begin // undefined signals
                                 ALUControl = 2'b00;
+                                FlagW = 2'b00;
                                 NoWrite = 1'b0;
                             end
                         endcase
