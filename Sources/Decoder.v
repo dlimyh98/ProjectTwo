@@ -50,7 +50,7 @@ module Decoder(
     
     wire [1:0] ALUOp;
     wire Branch;
-    reg ALUOp_toSend = 2'b00;
+    reg [1:0] ALUOp_toSend = 2'b00;
     reg Branch_toSend = 1'b0;
     assign ALUOp = ALUOp_toSend;
     assign Branch = Branch_toSend;
@@ -85,7 +85,7 @@ module Decoder(
                         ImmSrc = 2'b01;
                         RegSrc = 2'b10;               // RegSrc == X0 for LDR
                         
-                        if (Funct[3] == 0) ALUOp_toSend = 2'b10;    // U-Bit == 0 means subtract unsigned offset
+                        if (Funct[3] == 0) ALUOp_toSend = 2'b01;    // U-Bit == 0 means subtract unsigned offset
                             else ALUOp_toSend = 2'b00;              // U-Bit == 1 means add unsigned offset
                         
                         if (Funct[0] == 0) begin
