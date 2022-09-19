@@ -127,8 +127,8 @@ module ARM(
     // RegFile connections
     assign WE3 = RegWrite;
     assign A1 = (RegSrc[0] == 1'b0) ? Instr[19:16] : 4'd15;
-    assign A2 = (RegSrc[1] == 1'b0) ? Instr[3:0] : Instr[16:12];
-    assign A3 = Instr[16:12];
+    assign A2 = (RegSrc[1] == 1'b0) ? Instr[3:0] : Instr[15:12];
+    assign A3 = Instr[15:12];
     assign WD3 = Result;
     assign R15 = PCPlus8;
      // RD1 and RD2 computed inside RegFile, then used in ALU and Shifter
@@ -155,8 +155,8 @@ module ARM(
      // MemWrite already connected to ARM.v's output
      
     // Shifter connections
-    assign Instr[6:5] = Sh;
-    assign Instr[11:7] = Shamt5;
+    assign Sh = Instr[6:5];
+    assign Shamt5 = Instr[11:7];
     assign ShIn = RD2;
      // ShOut already connected from Shifter to ALU
     
