@@ -43,7 +43,7 @@ module Decoder(
     output reg ALUSrc = 1'b0,
     output reg [1:0] ImmSrc = 2'b00,
     output reg [1:0] RegSrc = 2'b00,
-    output reg NoWrite,
+    output reg NoWrite = 1'b0,
     output reg [1:0] ALUControl = 2'b00,
     output reg [1:0] FlagW = 2'b00
     );
@@ -59,29 +59,29 @@ module Decoder(
     // Main Decoder Logic
     // Input = Op, Funct[5] (I bit), Funct[0] (DP S bit, Memory L bit), Funct[3] (Memory U bit)
     // Output = RegW, MemW, MemtoReg, ALUSrc, ImmSrc, RegSrc
-    always @ (Op) begin
+    always @ (Op, Funct[5], Funct[0], Funct[3]) begin
         case (Op)
             2'b00 : begin
                         // assert must be DP Imm or DP Reg (with immediate shift)
-                        {Branch_toSend, MemtoReg, MemW} = 1'b0;
+                        {Branch_toSend, MemtoReg, MemW} = 3'b000;
                         RegW = 1'b1;
                         ALUOp_toSend = 2'b11;
                         
                         if (Funct[5] == 0) begin
                             // assert DP Reg
                             ALUSrc = 1'b0;
-                            {ImmSrc, RegSrc} = 2'b00;   // ImmSrc == XX for DP Reg
+                            {ImmSrc, RegSrc} = 4'b0000;   // ImmSrc == XX for DP Reg
                         end else begin
                             // assert DP Imm
                             ALUSrc = 1'b1;
-                            {ImmSrc, RegSrc} = 2'b00;   // RegSrc == X0 for DP Imm
+                            {ImmSrc, RegSrc} = 4'b0000;   // RegSrc == X0 for DP Imm
                         end
                     end
                     
             2'b01 : begin
                         // assert must be STR or LDR (positive/negative immediate offset)
                         Branch_toSend = 1'b0;
-                        {MemtoReg, ALUSrc} = 1'b1;    // MemToReg == X for STR
+                        {MemtoReg, ALUSrc} = 2'b11;   // MemtoReg == X for STR
                         ImmSrc = 2'b01;
                         RegSrc = 2'b10;               // RegSrc == X0 for LDR
                         
@@ -101,17 +101,17 @@ module Decoder(
                     
             2'b10 : begin
                         // assert must be Branch
-                        {MemtoReg, MemW, RegW} = 1'b0;
+                        {MemtoReg, MemW, RegW} = 3'b000;
                         ALUOp_toSend = 2'b00;
-                        {Branch_toSend, ALUSrc} = 1'b1;
+                        {Branch_toSend, ALUSrc} = 2'b11;
                         ImmSrc = 2'b10;
                         RegSrc = 2'b01;
                     end
                     
             2'b11 : begin
                         // assert must be invalid command (all output signals X)
-                        {Branch_toSend, MemtoReg, MemW, ALUSrc, RegW, ALUOp_toSend} = 0;
-                        {ImmSrc, RegSrc} = 0;
+                        {Branch_toSend, MemtoReg, MemW, ALUSrc, RegW, ALUOp_toSend} = 6'b000000;
+                        {ImmSrc, RegSrc} = 2'b00;
                     end                                      
         endcase
     end
@@ -120,7 +120,7 @@ module Decoder(
     // PC Logic
     // Input = Branch. RegW, Rd[3:0]
     // Output = PCS
-    always @ (Branch, RegW) begin
+    always @ (Branch, RegW, Rd[3:0]) begin
         if (Branch == 1'b0) begin
             if (Rd == 4'd15 && RegW == 1'b1) PCS = 1'b1; // PC is Rd for some instruction
             else PCS = 1'b0;                             // PC is not Rd for some instruction
@@ -133,7 +133,7 @@ module Decoder(
     // ALU Decoder Logic
     // Input = ALUOp, Funct[4:0] (Funt[5] is I bit)
     // Output = ALUControl[1:0] and FlagW[1:0]
-    always @ (ALUOp) begin
+    always @ (ALUOp, Funct[4:0]) begin
         case (ALUOp)
             2'b00 : begin
                         // assert must be positive offset STR/LDR (with unsigned offset)
@@ -178,7 +178,7 @@ module Decoder(
                     
             2'b10 : begin
                         // assert undefined
-                        {ALUControl, FlagW, NoWrite} = 0;
+                        {ALUControl, FlagW, NoWrite} = 2'b00;
                     end
         endcase            
     end

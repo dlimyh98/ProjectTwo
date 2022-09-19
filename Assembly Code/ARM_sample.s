@@ -47,12 +47,12 @@ delay_loop
                                   ; assert that C flag always 1 (subtraction never produces borrow)
                                   ; Z flag set to 1 iff R7 = 0, 0 otherwise
 
-        ANDEQS R7, R7, #0x0FF0    ; R7 = R7 AND #0xFF00, execute iff Z = 1
-                                  ; C flags UNCHANGED (remain C = 1), as not shift operation that carries out 1
+        ANDEQS R7, R7, #0x00F0    ; R7 = R7 AND #0x00F0, execute iff Z = 1 (no support for Immediate Shifting yet)
+                                  ; C flags CHANGED (change to C = 0), as calculating Src2 involves shifting (where bit shifted out is 0)
 								  ; Z flag set to 0
 								  ; if executed, [3:0] of 7-SEG should be 0
 
-        ADDEQ R7, R7, R6          ; execute if Z = 0
+        ADDEQ R7, R7, R6          ; execute if Z = 1 (should never execute)
 
         CMP R5, #0
 		BNE delay_loop	          ; Run loop by number of iterations in R4
@@ -60,7 +60,7 @@ delay_loop
         BNE delay_loop
 		
 display_results
-        STR R7, [R3]        ; display R7 on SEVENSEG
+        STR R7, [R3]        ; display R7 on SEVENSEG (should display 0x60)
 
 halt	
 		B    halt           ; infinite loop to halt computation. // A program should not "terminate" without an operating system to return control to
