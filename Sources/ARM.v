@@ -123,6 +123,7 @@ module ARM(
     
     /************ Implement datapath connections ************/
     assign WE_PC = 1 ; // Will need to control it for multi-cycle operations (Multiplication, Division) and/or Pipelining with hazard hardware.
+    assign WriteData = RD2;
     
     // RegFile connections
     assign WE3 = RegWrite;
