@@ -14,6 +14,7 @@
 	  
 ; ------- <code memory (ROM mapped to Instruction Memory) begins>
 ; Total number of instructions should not exceed 127 (126 excluding the last line 'halt B halt').
+; Program adds SHIFT_AMOUNT twice to R7 and show bits [8:4] on 7-seg
 
 		LDR R5, LEDS
 		LDR R6, DIPS
@@ -33,9 +34,9 @@
 
 main_loop
 		LDR R5, DELAY_VAL	; R5 = number of loop iterations (2)
-		;LDR R6, [R2]		; R6 = DIPS, use this if manually flipping switches onboard
-		LDR R6, DIPS_SIMUL  ; use this to simulate DIPS (0x05DB = 0b0000_0101_1101_1011)
-		LDR R7, ZERO        ; reset R7
+		LDR R7, [R2]		; R7 = DIPS, use this if manually flipping switches onboard
+		;LDR R7, DIPS_SIMUL  ; use this to simulate DIPS (0x05DB = 0b0000_0101_1101_1011)
+		;LDR R7, ZERO        ; reset R7
 
 ; assert that NZCV flags all initialized to 0		
 delay_loop
@@ -63,7 +64,7 @@ delay_loop
 		
 display_results
         STR R7, [R3]        ; display R7 on SEVENSEG (should display 0x60)
-
+		B main_loop
 halt	
 		B    halt           ; infinite loop to halt computation. // A program should not "terminate" without an operating system to return control to
 							; keep halt	B halt as the last line of your code.
@@ -131,7 +132,6 @@ INPUT_ARRAY
 
 		END	
 		
-;const int* x;         // x is a non-constant pointer to constant data
-;int const* x;         // x is a non-constant pointer to constant data 
-;int*const x;          // x is a constant pointer to non-constant data
-		
+;const int*x ;         // x is a non-constant pointer to constant data
+;int const*x ;         // x is a non-constant pointer to constant data 
+;int*constx ;          // x is a constant pointer to non-constant data
