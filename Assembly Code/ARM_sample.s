@@ -41,7 +41,7 @@ main_loop
 delay_loop
         ADD R7, R7, R4, LSR #2     ; R7 = R7 + (R4 >> 2)
 								   ; first iteration  : R4 >> 2 = 0b0011_0011 (R7 should be 0x33), C flag set to 0
-								   ; second iteration : R4 >> 2 = 0b0000_1100 (R7 should be 0x66), C flag set to 1
+								   ; second iteration : R4 >> 2 = 0b0011_0011 (R7 should be 0x66), C flag set to 1
 
         SUBS R5, R5, #1           ; decrement loop counter
                                   ; assert that C flag always set to 1 (subtraction never produces borrow)
