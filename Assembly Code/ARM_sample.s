@@ -27,16 +27,18 @@
 		
 		ADD R4, R4, #8
 		
-		LDR R1, [R4, #-8]     ; R1 = address of LEDS (0x00000C00)
-		LDR R2, [R4, #-4]     ; R2 = address of DIPS (0x00000C04)
-		LDR R3, [R4]		  ; R3 = address of SEVENSEG (0x00000C18)
-		LDR R4, SHIFT_AMOUNT  ; R4 = 0xCC = 0b1100_1100
+		LDR R1, [R4, #-8]       ; R1 = address of LEDS (0x00000C00)
+		LDR R2, [R4, #-4]       ; R2 = address of DIPS (0x00000C04)
+		STR R15, PC_ADDRESS		; since PC points 4 bytes (2 instructions) forward due to prefetching (pipelining)
+		LDR R3, [R4]		    ; R3 = address of SEVENSEG (0x00000C18)
+		LDR R4, SHIFT_AMOUNT    ; R4 = 0xCC = 0b1100_1100
+		
 
 main_loop
-		LDR R5, DELAY_VAL	; R5 = number of loop iterations (2)
-		LDR R7, [R2]		; R7 = DIPS, use this if manually flipping switches onboard
+		LDR R5, DELAY_VAL	 ; R5 = number of loop iterations (2)
+		LDR R7, [R2]		 ; R7 = DIPS, use this if manually flipping switches onboard
 		;LDR R7, DIPS_SIMUL  ; use this to simulate DIPS (0x05DB = 0b0000_0101_1101_1011)
-		;LDR R7, ZERO        ; reset R7
+		LDR R8, ZERO         ; use as Src2 for CMN
 
 ; assert that NZCV flags all initialized to 0		
 delay_loop
@@ -59,12 +61,12 @@ delay_loop
 
         CMP R5, #0                ; Z flag set to 1 iff R5 == 0 (CMP is equivalent to SUBS discarding result)
 		BNE delay_loop	          ; Run loop by number of iterations in R4
-        CMN R5, #0                ; C flag set to 0 iff R5 == 0 (CMN is equivalent to ADDS discarding result, set to 0 since addition DOESNT produce carry)
+        CMN R5, R8                ; C flag set to 0 iff R5 == 0 (CMN is equivalent to ADDS discarding result, set to 0 since addition DOESNT produce carry)
         BNE delay_loop
 		
 display_results
-        STR R7, [R3]        ; display R7 on SEVENSEG (should display 0x60)
-		B main_loop
+        STR R7, [R3]         ; display R7 on SEVENSEG (should display 0x40 if DIPS_SIMUL used)
+		LDR R15, PC_ADDRESS	 ; B main_loop
 halt	
 		B    halt           ; infinite loop to halt computation. // A program should not "terminate" without an operating system to return control to
 							; keep halt	B halt as the last line of your code.
@@ -108,6 +110,8 @@ variable1_addr
 		DCD variable1		; address of variable1. Required since we are avoiding pseudo-instructions // unsigned int * const variable1_addr = &variable1;
 INPUT_ARRAY_addr
 		DCD INPUT_ARRAY
+PC_ADDRESS_addr
+		DCD PC_ADDRESS
 constant1
 		DCD 0xABCD1234		; // const unsigned int constant1 = 0xABCD1234;
 string1   
@@ -128,6 +132,8 @@ variable1
 		DCD 0x00000000		;  // unsigned int variable1;
 INPUT_ARRAY
 		DCD 0x0C00, 0x0C04, 0x0C18
+PC_ADDRESS
+		DCD 0x00000000
 ; ------- <variable memory (RAM mapped to Data Memory) ends>	
 
 		END	

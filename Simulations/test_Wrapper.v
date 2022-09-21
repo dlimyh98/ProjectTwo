@@ -45,10 +45,11 @@ module test_Wrapper #(
     end
     
     // Stimuli
+    // one complete cycle to display on SEVENSEG = 31 instructions (5+300ns)
     initial begin
-        DIP = 16'b0000_0000_0000_0000;  // DIPS_SIMUL in Keil. Result = 0x00000060
-        #1000;
-        DIP = 16'b0000_0101_1101_1011;  // Result = 0x00000040
+        DIP = 16'b0000_0000_0000_0000;  // Result = 0x00000060
+        #300;
+        DIP = 16'b0000_0101_1101_1011;  // DIPS_SIMUL in Keil, Result = 0x00000040
         #300;
         DIP = 16'b1010_0001_1000_1000;  // Result = 0x000000E0
         #300;
