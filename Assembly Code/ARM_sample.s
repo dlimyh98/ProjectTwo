@@ -62,7 +62,7 @@ delay_loop
         CMP R5, #0                ; Z flag set to 1 iff R5 == 0 (CMP is equivalent to SUBS discarding result)
 		BNE delay_loop	          ; Run loop by number of iterations in R4
         CMN R5, R8                ; C flag set to 0 iff R5 == 0 (CMN is equivalent to ADDS discarding result, set to 0 since addition DOESNT produce carry)
-        BNE delay_loop
+        BCS delay_loop
 		
 display_results
         STR R7, [R3]         ; display R7 on SEVENSEG (should display 0x40 if DIPS_SIMUL used)
