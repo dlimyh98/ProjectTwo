@@ -66,38 +66,76 @@ module test_MCycle(
     initial begin
         // hold reset state for 100 ns.
         #10 ;    
-        MCycleOp = 2'b00 ;
-        Operand1 = 4'b1111 ;
+        MCycleOp = 2'b00 ;  // signed mul
+        // -1 x -1 = 1 or 0001
+        Operand1 = 4'b1111 ;    
         Operand2 = 4'b1111 ;
         Start = 1'b1 ; // Start is asserted continously(Operations are performed back to back). To try a non-continous Start, you can uncomment the commented lines.    
 
         wait(Busy) ; // suspend initial block till condition becomes true  ;
         wait(~Busy) ;
-//        #10 ;
-//        Start = 1'b0 ;
-//        #10 ;
-        Operand1 = 4'b1110 ;
-        Operand2 = 4'b1111 ;
-//        Start = 1'b1 ;
+        #10 ;
+        Start = 1'b0 ;
+        #10 ;
+        
+        
+        MCycleOp = 2'b00 ;  // signed mul
+        // -3 x 2 = -6 or 1010
+        Operand1 = 4'b1101 ;    
+        Operand2 = 4'b0010 ;
+        Start = 1'b1 ; // Start is asserted continously(Operations are performed back to back). To try a non-continous Start, you can uncomment the commented lines.    
+
+        wait(Busy) ; // suspend initial block till condition becomes true  ;
+        wait(~Busy) ;
+        #10 ;
+        Start = 1'b0 ;
+        #10 ;
+        
+        
+        MCycleOp = 2'b01 ;      // unsigned mul
+        // 2 x 6 = 12 or 1100
+        Operand1 = 4'b0010 ;
+        Operand2 = 4'b0110 ;
+        Start = 1'b1 ;
         
         wait(Busy) ; 
         wait(~Busy) ;
-//        #10 ;
-//        Start = 1'b0 ;
-//        #10 ;
-        MCycleOp = 2'b01 ;
-        Operand1 = 4'b1111 ;
-        Operand2 = 4'b1111 ;
-//        Start = 1'b1 ;
+        #10 ;
+        Start = 1'b0 ;
+        #10 ;
+        
+        
+        MCycleOp = 2'b10 ;      // signed div
+        // -4 / 3 = -1 R -1 or 1111 R 1111
+        Operand1 = 4'b1100 ;        // 0xC
+        Operand2 = 4'b0011 ;        // 0x3
+        Start = 1'b1 ;
 
         wait(Busy) ; 
         wait(~Busy) ; 
-//        #10 ;
-//        Start = 1'b0 ;
-//        #10 ;
-        Operand1 = 4'b1110 ;
-        Operand2 = 4'b1111 ;
-//        Start = 1'b1 ;
+        #10 ;
+        Start = 1'b0 ;
+        #10 ;
+        
+        
+        MCycleOp = 2'b10 ;      // signed div
+        // -6 / -4 = 1 R -2 or 0001 R 1111
+        Operand1 = 4'b1010 ;
+        Operand2 = 4'b1100 ;
+        Start = 1'b1 ;
+
+        wait(Busy) ; 
+        wait(~Busy) ; 
+        #10 ;
+        Start = 1'b0 ;
+        #10 ;
+        
+        
+        MCycleOp = 2'b11 ;      // unsigned div
+        // 8 / 4 = 2 R 0 or 0010 R 0000
+        Operand1 = 4'b1000 ;
+        Operand2 = 4'b0100 ;
+        Start = 1'b1 ;
 
         wait(Busy) ; 
         wait(~Busy) ; 
