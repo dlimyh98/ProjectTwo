@@ -54,13 +54,11 @@ delay_loop
 								  ; if executed,
                                   ; - C flags remain UNCHANGED (still C = 1)
 								  ;   if calculating Src2 involves shifting (where bit shifted out is 0), then C flag would be set to 0
-								  ; - Z flag set to 0
+								  ; - Z flag set accordingly
 								  ; - [3:0] of 7-SEG should be 0
 
-        ADDEQ R7, R7, R6          ; execute if Z = 1 (should never execute)
-
         CMP R5, #0                ; Z flag set to 1 iff R5 == 0 (CMP is equivalent to SUBS discarding result)
-		BNE delay_loop	          ; Run loop by number of iterations in R4
+		BNE delay_loop	          ; Run loop by number of iterations in R5
         CMN R5, R8                ; C flag set to 0 iff R5 == 0 (CMN is equivalent to ADDS discarding result, set to 0 since addition DOESNT produce carry)
         BCS delay_loop
 		
