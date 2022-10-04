@@ -57,7 +57,7 @@ module MCycle
     reg n_state = IDLE ;
    
     reg done ;
-    reg diff ;
+    reg [1:0] sign_cases = 0;
     reg [7:0] count = 0 ; // assuming no computation takes more than 256 cycles.
     reg [2*width-1:0] temp_sum = 0 ;
     reg [2*width-1:0] shifted_op1 = 0 ;
@@ -108,19 +108,27 @@ module MCycle
             shifted_op2 = { {width{~MCycleOp[0] & Operand2[width-1]}}, Operand2 } ; 
             
             if (~MCycleOp[0]) begin     // for signed mul/div
-                // invert + 1 if negative
+                // change operands to +ve if -ve
                 if (Operand1[width-1] == 1) begin     
                     shifted_op1 = ~shifted_op1 + 1'b1;
                 end
                 if (Operand2[width-1] == 1) begin     
                     shifted_op2 = ~shifted_op2 + 1'b1;
                 end
-                if (Operand1[width-1] == ~Operand2[width-1]) begin
-                    diff = 1;
+                
+                
+                if (Operand1[width-1] | Operand2[width-1]) begin      // Either of the operands are -ve
+                    sign_cases = 1;                                     // Case for -ve/-ve or +ve/-ve
+                    if (Operand1[width-1] & ~Operand2[width-1]) begin       // Case for -ve / +ve
+                        sign_cases = 2; 
+                    end
                 end
+                
             end
             
-            if (MCycleOp[1]) begin
+            
+            
+            if (MCycleOp[1]) begin      // To fill LSBs of Divisor with 0s
                 shifted_op2 = { shifted_op2[width - 1:0], {width{1'b0}} };
             end
            
@@ -149,8 +157,8 @@ module MCycle
             
             shifted_op1 = shifted_op1 - shifted_op2;
             
-            if (shifted_op1[2*width-1] == 0) begin     // shift Quotient left with LSB = 1
-                quotient = {quotient[2:0], 1'b1};
+            if (shifted_op1[2*width-1] == 0) begin      // remainder >= 0
+                quotient = {quotient[2:0], 1'b1};       // shift Quotient left with LSB = 1
             end
             else begin      // remainder < 0
                 shifted_op1 = shifted_op1 + shifted_op2;     // add back the divisor
@@ -163,14 +171,16 @@ module MCycle
             
           
             if(count == width + 1) begin       // check for last cycle
-                if (diff) begin
+                if (sign_cases == 2'd1) begin
+                    shifted_op1[3:0] = ~shifted_op1[3:0] + 1'b1;
+                end
+                if (sign_cases == 2'd2) begin 
                     shifted_op1[3:0] = ~shifted_op1[3:0] + 1'b1;
                     quotient = ~quotient + 1'b1;
-                    diff = 0;
                 end
                 
                 temp_sum = {shifted_op1[3:0], quotient};   // remainder as MSW and quotient as LSW  
-                
+                sign_cases = 0;
                 done <= 1'b1;
             end
         
