@@ -48,11 +48,11 @@ module test_Wrapper #(
     initial begin
         
         DIP = 16'b0000_0101_1101_1011;  // 0x05DB x 0x0CC = 0x4AA84
-        PB = 3'b010;                    // BTNR being pressed (MUL instruction)
+        PB = 3'b010;                    // BTNC being pressed (MUL instruction)
         
         
         DIP = 16'b0000_0101_1101_1011;  // 0x05DB / 0xBB = 8 R 3
-        PB = 3'b000;                    // BTNR not being pressed (DIV instruction)
+        PB = 3'b000;                    // BTNC not being pressed (DIV instruction)
         
     end
     

@@ -68,7 +68,9 @@ module Decoder(
     // Main Decoder Logic
     // Input = Op, Funct[5] (I bit), Funct[0] (DP S bit, Memory L bit), Funct[3] (Memory U bit)
     // Output = RegW, MemW, MemtoReg, ALUSrc, ImmSrc, RegSrc
-    always @ (Op, Funct[5], Funct[0], Funct[3], isMULorDIV[3:0]) begin
+    always @ (Op, Funct[5], Funct[0], Funct[3], isMULorDIV[3:0], isDIV[3:0]) begin
+        MCycleOp[1:0] = 2'b00;  // stop inferring latch problem
+        
         case (Op)
             2'b00 : begin
                         // assert must be DP Imm or DP Reg (with immediate shift)
@@ -84,7 +86,7 @@ module Decoder(
                             
                             if (isMULorDIV[3:0] == 4'b1001) begin
                                 // assert must be MUL/MLA, which is also MULTICYCLE instruction
-                                Start = 1'b1; 
+                                Start = 1'b1;
                                 MCycleOp[1:0] = (isDIV[3:0] == 4'b0001) ? 2'b11 : 2'b01;
                                 ALUorMCycle = 1'b1;
                             end else begin

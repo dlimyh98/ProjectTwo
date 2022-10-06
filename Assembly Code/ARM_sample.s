@@ -23,11 +23,11 @@
 main_loop
 		LDR R6, [R1]		   ; R6 = DIPS, use this if manually flipping switches onboard
 		;LDR R6, DIPS_SIMUL    ; use this to simulate DIPS (0x05DB = 0b0000_0101_1101_1011)
-		LDR R7, [R2]           ; R7 = PBS, use this if manually pressing BTNR to toggle between MUL and MLA
-		;LDR R7, BTNR_SIMUL    ; R7 = 0x2, use this to simulate BTNR being pressed
+		LDR R7, [R2]           ; R7 = PBS, use this if manually pressing BTNC to toggle between MUL and MLA
+		;LDR R7, BTNC_SIMUL    ; R7 = 0x2, use this to simulate BTNC being pressed
 		LDR R8, ZERO           ; reset result seen on SEVENSEG
 		
-		CMP R7, #0x2           ; MUL -> R7 = 0x2 (BTNR pressed), MLA -> R7 = 0 (BTNR not pressed);
+		CMP R7, #0x2           ; MUL -> R7 = 0x2 (BTNC pressed), MLA -> R7 = 0 (BTNC not pressed);
 		BEQ multiplication_loop
 		B division_loop
 		
@@ -80,7 +80,7 @@ DIVIDE_AMOUNT
 		DCD 0xBB
 DIPS_SIMUL
         DCD 0x000005DB
-BTNR_SIMUL
+BTNC_SIMUL
 		DCD 0x00000002
 ONES
 		DCD 0xF

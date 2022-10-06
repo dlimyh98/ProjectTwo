@@ -212,7 +212,7 @@ module MCycle
             end 
         end    
         
-        ///////////////////////////////////////////// Division /////////////////////////////////////////////
+         ///////////////////////////////////////////// Division /////////////////////////////////////////////
         else if (MCycleOp[1]) begin     // division.
             // shifted_op1 -- Dividend / Remainder
             // shifted_op2 -- Divisor
@@ -220,11 +220,11 @@ module MCycle
             shifted_op1 = shifted_op1 - shifted_op2;
             
             if (shifted_op1[2*width-1] == 0) begin      // remainder >= 0
-                quotient = {quotient[width-1:0], 1'b1};       // shift Quotient left with LSB = 1
+                quotient = {quotient[2:0], 1'b1};       // shift Quotient left with LSB = 1
             end
             else begin      // remainder < 0
                 shifted_op1 = shifted_op1 + shifted_op2;     // add back the divisor
-                quotient = {quotient[width-1:0], 1'b0};           // shift Quotient by left with LSB = 0
+                quotient = {quotient[2:0], 1'b0};           // shift Quotient by left with LSB = 0
             end
               
             shifted_op2 = {1'b0, shifted_op2[2*width-1:1]};  // divisor shift right
@@ -234,13 +234,13 @@ module MCycle
           
             if(count == width + 1) begin       // check for last cycle
                 if (sign_cases[0] == 1) begin
-                    shifted_op1[width-1:0] = ~shifted_op1[width-1:0] + 1'b1;
+                    shifted_op1[3:0] = ~shifted_op1[3:0] + 1'b1;
                 end
                 if (sign_cases[1] == 1) begin 
                     quotient = ~quotient + 1'b1;
                 end
                 
-                temp_sum = {shifted_op1[width-1:0], quotient};   // remainder as MSW and quotient as LSW  
+                temp_sum = {shifted_op1[3:0], quotient};   // remainder as MSW and quotient as LSW  
                 sign_cases = 2'b0;
                 done <= 1'b1;
             end
@@ -251,5 +251,4 @@ module MCycle
         Result2 <= temp_sum[2*width-1 : width] ;
         Result1 <= temp_sum[width-1 : 0] ;     
     end
-   
 endmodule
