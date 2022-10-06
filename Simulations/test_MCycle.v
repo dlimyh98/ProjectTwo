@@ -72,10 +72,15 @@ module test_MCycle(
         // Operand1 = Multiplicand,  Operand2 = Multiplier
         
         ////////////////////// SIGNED MULTIPLICATION TESTS //////////////////////
+<<<<<<< HEAD
         /*
         MCycleOp = 2'b00;
         
         
+=======
+        MCycleOp = 2'b00;
+
+>>>>>>> 942d8e331f5b54582afac5872e5ed9d6a9474575
         // -1 x -1 = 1 or 8'b0000_0001
         Operand1 = 4'b1111 ;    
         Operand2 = 4'b1111 ;
@@ -87,7 +92,6 @@ module test_MCycle(
         Start = 1'b0 ;
         #10 ;
         
-        
         // -7 * -7 = 49 or 8'b0011_0001
         Operand1 = 4'b1001;
         Operand2 = 4'b1001;
@@ -95,6 +99,16 @@ module test_MCycle(
         wait(Busy);
         wait(~Busy);
         
+<<<<<<< HEAD
+        // -7 * -7 = 49 or 8'b0011_0001
+        Operand1 = 4'b1001;
+        Operand2 = 4'b1001;
+        Start = 1'b1;
+        wait(Busy);
+        wait(~Busy);
+        
+=======
+>>>>>>> 942d8e331f5b54582afac5872e5ed9d6a9474575
         // 0 x -7 = 0 or 8'b0000_0000
         Operand1 = 4'b0000;
         Operand2 = 4'b1111;
@@ -131,7 +145,11 @@ module test_MCycle(
         Operand2 = 4'b1000;
         wait(Busy);
         wait(~Busy);
+<<<<<<< HEAD
         */
+=======
+        
+>>>>>>> 942d8e331f5b54582afac5872e5ed9d6a9474575
         
         ////////////////////// UNSIGNED MULTIPLICATION TESTS //////////////////////
         MCycleOp = 2'b01 ;
@@ -150,7 +168,10 @@ module test_MCycle(
    
         /************************************* DIVISION TEST CASES *************************************/
         // 10: signed, 11: unsigned
+<<<<<<< HEAD
         /*
+=======
+>>>>>>> 942d8e331f5b54582afac5872e5ed9d6a9474575
         
         // -ve / +ve
         MCycleOp = 2'b10 ;      

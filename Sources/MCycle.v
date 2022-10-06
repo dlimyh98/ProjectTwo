@@ -70,7 +70,10 @@ module MCycle
     reg signed [(2*width):0] temp_sum_booth = 0;   // temp_sum with 1 bit of extra space, for boothBit
     reg [(2*width):0] boothMultiplicand = 0;       // Multiplicand aligned to MSB of temp_sum_booth
     reg [(2*width):0] boothMultiplicand2s = 0;     // 2s complemented Multiplicand aligned to MSB of temp_sum_booth
+<<<<<<< HEAD
     reg [2*width:0] temp_shifted_op1 = 0;          // used for Sequential Multiplier (unsigned)
+=======
+>>>>>>> 942d8e331f5b54582afac5872e5ed9d6a9474575
    
     always@( state, done, Start, RESET ) begin : IDLE_PROCESS  
 		// Note : This block uses non-blocking assignments to get around an unpredictable Verilog simulation behaviour.
@@ -121,6 +124,7 @@ module MCycle
                 if (Operand2[width-1] == 1) begin     
                     shifted_op2 = ~shifted_op2 + 1'b1;
                 end
+<<<<<<< HEAD
                
                if (Operand1[width-1]) begin      // Dividend is -ve
                     sign_cases[0] = 1;            // To invert remainder
@@ -129,6 +133,16 @@ module MCycle
                 if (Operand1[width-1] == ~Operand2[width-1]) begin     // if dividend and divisor are opp signs
                     sign_cases[1] = 1;              // To invert the quotient
                 end
+=======
+                
+                
+                if (Operand1[width-1]) begin      // Dividend is -ve
+                    sign_cases[0] = 1;            // To invert remainder
+                end
+                if (Operand1[width-1] == ~Operand2[width-1]) begin     // if dividend and divisor are opp signs
+                    sign_cases[1] = 1;              // To invert the quotient
+                end
+>>>>>>> 942d8e331f5b54582afac5872e5ed9d6a9474575
             end
             
             if (MCycleOp[1]) begin      // To fill LSBs of Divisor with 0s
@@ -136,6 +150,7 @@ module MCycle
             end
             
             /////////////////////////// MULTIPLICATION PREPROCESSING ///////////////////////////
+<<<<<<< HEAD
             if (~MCycleOp[1]) begin
                 if (~MCycleOp[0]) begin
                     // Signed Multiplication
@@ -148,6 +163,14 @@ module MCycle
                     temp_shifted_op1 = { 1'b0, Operand1, {(width){1'b0}} };
                 end
             end
+=======
+            if (~MCycleOp[1] && ~MCycleOp[0]) begin    // for Signed Multiplication only
+                temp_sum_booth = { {(width){1'b0}}, Operand2, {1{1'b0}} };      // store Multiplier and boothBit in LSBs
+                boothMultiplicand = { Operand1, {(width+1){1'b0}} };
+                boothMultiplicand2s = { (~Operand1 + 1'b1), {(width+1){1'b0}} };
+            end
+              
+>>>>>>> 942d8e331f5b54582afac5872e5ed9d6a9474575
         end;
                
         done <= 1'b0 ;   
@@ -156,9 +179,13 @@ module MCycle
         if(~MCycleOp[1]) begin
             // if(~MCycleOp[0]) aka signed,
             //   - Booth's Algorithm takes (WIDTH) cycles to execute, only need to iterate through bits of Multiplier
+<<<<<<< HEAD
             //      - guaranteed not to overflow due to additional bit at LSB
             //   - Sequential Multiplication takes (WIDTH) cycles to execute
             //      - chance of overflow, need to consider carry bit
+=======
+            //   - Inefficient Multiplication takes (2*WIDTH) cycles to execute, must iterate through all bits of SIGN-EXTENDED Multiplier
+>>>>>>> 942d8e331f5b54582afac5872e5ed9d6a9474575
             
             // Signed Multiplication (using Booth's Algorithm)
             if (~MCycleOp[0]) begin
@@ -197,6 +224,7 @@ module MCycle
             
             // Unsigned Multiplier (Sequential Algorithm)
             else begin
+<<<<<<< HEAD
                if (temp_sum_booth[0]) begin
                         temp_sum_booth = temp_sum_booth + temp_shifted_op1;
                 end
@@ -210,6 +238,20 @@ module MCycle
                 
                 count = count + 1;  
             end 
+=======
+                if (shifted_op2[0])
+                    temp_sum = temp_sum + shifted_op1;
+                    
+                shifted_op2 = {1'b0, shifted_op2[2*width-1 : 1]};
+                shifted_op1 = {shifted_op1[2*width-2 : 0], 1'b0}; 
+                
+                if( (MCycleOp[0] & count == width-1) | (~MCycleOp[0] & count == 2*width-1) ) // last cycle?
+                    done <= 1'b1; 
+                
+                count = count + 1;  
+            end 
+        
+>>>>>>> 942d8e331f5b54582afac5872e5ed9d6a9474575
         end    
         
         ///////////////////////////////////////////// Division /////////////////////////////////////////////
@@ -234,13 +276,21 @@ module MCycle
           
             if(count == width + 1) begin       // check for last cycle
                 if (sign_cases[0] == 1) begin
+<<<<<<< HEAD
                     shifted_op1[width-1:0] = ~shifted_op1[width-1:0] + 1'b1;
+=======
+                    shifted_op1[3:0] = ~shifted_op1[3:0] + 1'b1;
+>>>>>>> 942d8e331f5b54582afac5872e5ed9d6a9474575
                 end
                 if (sign_cases[1] == 1) begin 
                     quotient = ~quotient + 1'b1;
                 end
                 
+<<<<<<< HEAD
                 temp_sum = {shifted_op1[width-1:0], quotient};   // remainder as MSW and quotient as LSW  
+=======
+                temp_sum = {shifted_op1[3:0], quotient};   // remainder as MSW and quotient as LSW  
+>>>>>>> 942d8e331f5b54582afac5872e5ed9d6a9474575
                 sign_cases = 2'b0;
                 done <= 1'b1;
             end
