@@ -112,7 +112,7 @@ module MCycle
             
             /////////////////////////// DIVISION PREPROCESSING ///////////////////////////
             
-            if (~MCycleOp[0] && MCycleOp[1]) begin     // for Signed Division only
+            if (~MCycleOp[0] & MCycleOp[1]) begin     // for Signed Division Only
                 // change operands to +ve if -ve
                 if (Operand1[width-1] == 1) begin     
                     shifted_op1 = ~shifted_op1 + 1'b1;
@@ -120,12 +120,13 @@ module MCycle
                 if (Operand2[width-1] == 1) begin     
                     shifted_op2 = ~shifted_op2 + 1'b1;
                 end
-               
-                if (Operand1[width-1] | Operand2[width-1]) begin      // Either of the operands are -ve
-                    sign_cases = 1;                                     // Case for -ve/-ve or +ve/-ve
-                    if (Operand1[width-1] & ~Operand2[width-1]) begin       // Case for -ve / +ve
-                        sign_cases = 2; 
-                    end
+                
+                
+                if (Operand1[width-1]) begin      // Dividend is -ve
+                    sign_cases[0] = 1;            // To invert remainder
+                end
+                if (Operand1[width-1] == ~Operand2[width-1]) begin     // if dividend and divisor are opp signs
+                    sign_cases[1] = 1;              // To invert the quotient
                 end
             end
             
@@ -202,7 +203,7 @@ module MCycle
         end    
         
         ///////////////////////////////////////////// Division /////////////////////////////////////////////
-        else if (MCycleOp[1]) begin
+        else if (MCycleOp[1]) begin     // division.
             // shifted_op1 -- Dividend / Remainder
             // shifted_op2 -- Divisor
             
@@ -222,16 +223,15 @@ module MCycle
             
           
             if(count == width + 1) begin       // check for last cycle
-                if (sign_cases == 2'd1) begin
+                if (sign_cases[0] == 1) begin
                     shifted_op1[3:0] = ~shifted_op1[3:0] + 1'b1;
                 end
-                if (sign_cases == 2'd2) begin 
-                    shifted_op1[3:0] = ~shifted_op1[3:0] + 1'b1;
+                if (sign_cases[1] == 1) begin 
                     quotient = ~quotient + 1'b1;
                 end
                 
                 temp_sum = {shifted_op1[3:0], quotient};   // remainder as MSW and quotient as LSW  
-                sign_cases = 0;
+                sign_cases = 2'b0;
                 done <= 1'b1;
             end
         

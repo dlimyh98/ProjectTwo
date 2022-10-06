@@ -184,7 +184,7 @@ module test_MCycle(
         
         // +ve / -ve
         MCycleOp = 2'b10 ;      
-        // 3 / -2 = 1 R -1 or 0001 R 1111
+        // 3 / -2 = -1 R 1 or 1111 R 0001
         Operand1 = 4'b0011 ;        // 0x3
         Operand2 = 4'b1110 ;        // 0xE
         Start = 1'b1 ;
@@ -214,7 +214,7 @@ module test_MCycle(
         
         // Divisor > Dividend
         MCycleOp = 2'b11 ;      
-        // 4 / 8 = 0 R 8 or 0000 R 1000
+        // 4 / 8 = 0 R 4 or 0000 R 0100
         Operand1 = 4'b0100 ;        // 0x4
         Operand2 = 4'b1000 ;        // 0x8
         Start = 1'b1 ;
