@@ -65,37 +65,80 @@ module test_MCycle(
     // STIMULI
     initial begin
         // hold reset state for 100 ns.
-        #10 ;    
-        MCycleOp = 2'b00 ;  // signed mul
-        // -1 x -1 = 1 or 0001
+        #10 ;
+        
+        /************************************* MULTIPLICATION TEST CASES *************************************/
+        // 00 = signed Multiply, 01 = unsigned Multiply
+        // Operand1 = Multiplicand,  Operand2 = Multiplier
+        
+        ////////////////////// SIGNED MULTIPLICATION TESTS //////////////////////
+        /*
+        MCycleOp = 2'b00;
+        
+        
+        // -1 x -1 = 1 or 8'b0000_0001
         Operand1 = 4'b1111 ;    
         Operand2 = 4'b1111 ;
-        Start = 1'b1 ; // Start is asserted continously(Operations are performed back to back). To try a non-continous Start, you can uncomment the commented lines.    
+        Start = 1'b1 ; // Operations will be performed back to back, if Start is asserted continuously  
 
-        wait(Busy) ; // suspend initial block till condition becomes true  ;
-        wait(~Busy) ;
+        wait(Busy);   // suspend further procedural statements until condition becomes true (suspend until START == 1)
+        wait(~Busy);  // suspend further procedural statements until Result is ready
         #10 ;
         Start = 1'b0 ;
         #10 ;
         
         
-        MCycleOp = 2'b00 ;  // signed mul
-        // -3 x 2 = -6 or 1010
+        // -7 * -7 = 49 or 8'b0011_0001
+        Operand1 = 4'b1001;
+        Operand2 = 4'b1001;
+        Start = 1'b1;
+        wait(Busy);
+        wait(~Busy);
+        
+        // 0 x -7 = 0 or 8'b0000_0000
+        Operand1 = 4'b0000;
+        Operand2 = 4'b1111;
+        wait(Busy);
+        wait(~Busy);
+    
+        // -3 x 2 = -6 or 8'b1111_1010
         Operand1 = 4'b1101 ;    
         Operand2 = 4'b0010 ;
-        Start = 1'b1 ; // Start is asserted continously(Operations are performed back to back). To try a non-continous Start, you can uncomment the commented lines.    
-
-        wait(Busy) ; // suspend initial block till condition becomes true  ;
+        Start = 1'b1;
+        wait(Busy) ;
         wait(~Busy) ;
-        #10 ;
-        Start = 1'b0 ;
-        #10 ;
         
+        // -5 x 4 = -20 or 8'b1110_1100;
+        Operand1 = 4'b1011;
+        Operand2 = 4'b0100;
+        wait(Busy) ;
+        wait(~Busy) ;
         
-        MCycleOp = 2'b01 ;      // unsigned mul
-        // 2 x 6 = 12 or 1100
-        Operand1 = 4'b0010 ;
-        Operand2 = 4'b0110 ;
+        // -8 x 7 = -56 or 8'b1100 1000
+        Operand1 = 4'b1000;
+        Operand2 = 4'b0111;
+        wait(Busy) ;
+        wait(~Busy) ;
+       
+        // 7 x -6 = -42 or 8'b1101 0110;
+        Operand1 = 4'b0111;
+        Operand2 = 4'b1010;
+        wait(Busy); 
+        wait(~Busy);
+              
+        // 1 x -8 = -8 or 8'b1111_1000;
+        Operand1 = 4'b0001;
+        Operand2 = 4'b1000;
+        wait(Busy);
+        wait(~Busy);
+        */
+        
+        ////////////////////// UNSIGNED MULTIPLICATION TESTS //////////////////////
+        MCycleOp = 2'b01 ;
+        
+        // 15 x 15 = 225 or 8'b1110_0001
+        Operand1 = 4'b1111 ;
+        Operand2 = 4'b1111 ;
         Start = 1'b1 ;
         
         wait(Busy) ; 
@@ -104,9 +147,11 @@ module test_MCycle(
         Start = 1'b0 ;
         #10 ;
         
-        // Test cases for Divide
+   
+        /************************************* DIVISION TEST CASES *************************************/
         // 10: signed, 11: unsigned
-        //
+        /*
+        
         // -ve / +ve
         MCycleOp = 2'b10 ;      
         // -4 / 3 = -1 R -1 or 1111 R 1111
@@ -143,7 +188,7 @@ module test_MCycle(
         
         // +ve / -ve
         MCycleOp = 2'b10 ;      
-        // 3 / -2 = 1 R -1 or 0001 R 1111
+        // 3 / -2 = -1 R 1 or 1111 R 0001
         Operand1 = 4'b0011 ;        // 0x3
         Operand2 = 4'b1110 ;        // 0xE
         Start = 1'b1 ;
@@ -173,7 +218,7 @@ module test_MCycle(
         
         // Divisor > Dividend
         MCycleOp = 2'b11 ;      
-        // 4 / 8 = 0 R 8 or 0000 R 1000
+        // 4 / 8 = 0 R 4 or 0000 R 0100
         Operand1 = 4'b0100 ;        // 0x4
         Operand2 = 4'b1000 ;        // 0x8
         Start = 1'b1 ;
@@ -190,6 +235,7 @@ module test_MCycle(
         wait(Busy) ; 
         wait(~Busy) ; 
         Start = 1'b0 ;
+        */
         
     end
      
@@ -200,19 +246,3 @@ module test_MCycle(
     end
     
 endmodule
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

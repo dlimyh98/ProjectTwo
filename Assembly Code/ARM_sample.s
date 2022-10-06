@@ -14,57 +14,35 @@
 	  
 ; ------- <code memory (ROM mapped to Instruction Memory) begins>
 ; Total number of instructions should not exceed 127 (126 excluding the last line 'halt B halt').
-; Program adds SHIFT_AMOUNT twice to R7 and show bits [8:4] on 7-seg
-
-		LDR R5, LEDS
-		LDR R6, DIPS
-		LDR R7, SEVENSEG
+		LDR R1, DIPS               ; R1 = address of DIPS (0x00000C04)
+		LDR R2, PBS                ; R2 = address of PBS (0x00000C08)
+		LDR R3, SEVENSEG           ; R3 = address of SEVENSEG (0x00000C18)
+		LDR R4, MULTIPLY_AMOUNT    ; R4 = 0xCC = 0b1100_1100
+		LDR R5, DIVIDE_AMOUNT      ; R5 = 0xBB = 0b1011_1011
 		
-		LDR R4, INPUT_ARRAY_addr
-		STR R5, [R4]
-		STR R6, [R4, #4]
-		STR R7, [R4, #8]
-		
-		ADD R4, R4, #8
-		
-		LDR R1, [R4, #-8]       ; R1 = address of LEDS (0x00000C00)
-		LDR R2, [R4, #-4]       ; R2 = address of DIPS (0x00000C04)
-		STR R15, PC_ADDRESS		; since PC points 4 bytes (2 instructions) forward due to prefetching (pipelining)
-		LDR R3, [R4]		    ; R3 = address of SEVENSEG (0x00000C18)
-		LDR R4, SHIFT_AMOUNT    ; R4 = 0xCC = 0b1100_1100
-		
-
 main_loop
-		LDR R5, DELAY_VAL	 ; R5 = number of loop iterations (2)
-		LDR R7, [R2]		 ; R7 = DIPS, use this if manually flipping switches onboard
-		;LDR R7, DIPS_SIMUL  ; use this to simulate DIPS (0x05DB = 0b0000_0101_1101_1011)
-		LDR R8, ZERO         ; use as Src2 for CMN
-
-; assert that NZCV flags all initialized to 0		
-delay_loop
-        ADD R7, R7, R4, LSR #2     ; R7 = R7 + (R4 >> 2)
-								   ; first iteration  : R4 >> 2 = 0b0011_0011 (R7 should be 0x33), C flag set to 0
-								   ; second iteration : R4 >> 2 = 0b0011_0011 (R7 should be 0x66), C flag set to 0
-
-        SUBS R5, R5, #1           ; decrement loop counter
-                                  ; assert that C flag always set to 1 (subtraction never produces borrow)
-                                  ; Z flag set to 1 iff R7 = 0, otherwise 0
-
-        ANDEQS R7, R7, #0x00F0    ; R7 = R7 AND #0x00F0, execute iff Z = 1 (no support for Immediate Shifting yet)
-								  ; if executed,
-                                  ; - C flags remain UNCHANGED (still C = 1)
-								  ;   if calculating Src2 involves shifting (where bit shifted out is 0), then C flag would be set to 0
-								  ; - Z flag set accordingly
-								  ; - [3:0] of 7-SEG should be 0
-
-        CMP R5, #0                ; Z flag set to 1 iff R5 == 0 (CMP is equivalent to SUBS discarding result)
-		BNE delay_loop	          ; Run loop by number of iterations in R5
-        CMN R5, R8                ; C flag set to 0 iff R5 == 0 (CMN is equivalent to ADDS discarding result, set to 0 since addition DOESNT produce carry)
-        BCS delay_loop
+		LDR R6, [R1]		   ; R6 = DIPS, use this if manually flipping switches onboard
+		;LDR R6, DIPS_SIMUL    ; use this to simulate DIPS (0x05DB = 0b0000_0101_1101_1011)
+		LDR R7, [R2]           ; R7 = PBS, use this if manually pressing BTNR to toggle between MUL and MLA
+		;LDR R7, BTNR_SIMUL    ; R7 = 0x2, use this to simulate BTNR being pressed
+		LDR R8, ZERO           ; reset result seen on SEVENSEG
 		
-display_results
-        STR R7, [R3]         ; display R7 on SEVENSEG (should display 0x40 if DIPS_SIMUL used)
-		LDR R15, PC_ADDRESS	 ; B main_loop
+		CMP R7, #0x2           ; MUL -> R7 = 0x2 (BTNR pressed), MLA -> R7 = 0 (BTNR not pressed);
+		BEQ multiplication_loop
+		B division_loop
+		
+multiplication_loop
+		MUL R8, R6, R4       ; R8 = R6*R4, should be 0x4AA84 if using DIPS_SIMUL
+        STR R8, [R3]         ; display R8 on SEVENSEG		
+		B main_loop
+		
+division_loop		         ; MLA Rd, Rm, Rs, Rn
+							 ; MLA R8, R6, R5, R15
+		MLA R8, R6, R5, R1   ; R8 = R6/R5, set Rn to be 4'd1 to differentiate it from MUL
+						     ; 0x05DB / 0xBB = 8 R 3, where 8 (quotient) stored in R8
+        STR R8, [R3]         ; display R8 on SEVENSEG
+		B main_loop
+		
 halt	
 		B    halt           ; infinite loop to halt computation. // A program should not "terminate" without an operating system to return control to
 							; keep halt	B halt as the last line of your code.
@@ -96,20 +74,20 @@ SEVENSEG
 ; Rest of the constants should be declared below.
 ZERO
 		DCD 0x00000000		; constant 0
-SHIFT_AMOUNT
+MULTIPLY_AMOUNT
         DCD 0xCC
+DIVIDE_AMOUNT
+		DCD 0xBB
 DIPS_SIMUL
         DCD 0x000005DB
+BTNR_SIMUL
+		DCD 0x00000002
+ONES
+		DCD 0xF
 LSB_MASK
 		DCD 0x000000FF		; constant 0xFF
-DELAY_VAL
-		DCD 0x00000002		; delay time.
 variable1_addr
 		DCD variable1		; address of variable1. Required since we are avoiding pseudo-instructions // unsigned int * const variable1_addr = &variable1;
-INPUT_ARRAY_addr
-		DCD INPUT_ARRAY
-PC_ADDRESS_addr
-		DCD PC_ADDRESS
 constant1
 		DCD 0xABCD1234		; // const unsigned int constant1 = 0xABCD1234;
 string1   
@@ -128,10 +106,6 @@ stringptr
 
 variable1
 		DCD 0x00000000		;  // unsigned int variable1;
-INPUT_ARRAY
-		DCD 0x0C00, 0x0C04, 0x0C18
-PC_ADDRESS
-		DCD 0x00000000
 ; ------- <variable memory (RAM mapped to Data Memory) ends>	
 
 		END	

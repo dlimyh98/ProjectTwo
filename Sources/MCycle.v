@@ -34,7 +34,7 @@
 
 module MCycle
 
-    #(parameter width = 4) // Keep this at 4 to verify your algorithms with 4 bit numbers (easier). When using MCycle as a component in ARM, generic map it to 32.
+    #(parameter width = 32) // Keep this at 4 to verify your algorithms with 4 bit numbers (easier). When using MCycle as a component in ARM, generic map it to 32.
     (
         input CLK,
         input RESET, // Connect this to the reset of the ARM processor.
@@ -63,9 +63,14 @@ module MCycle
     reg [2*width-1:0] shifted_op1 = 0 ;
     reg [2*width-1:0] shifted_op2 = 0 ;    
     
+    /*************** Division Registers ***************/
     reg [width-1:0] quotient = 0 ;
     
-     
+    /************** Multiplication Registers ***************/
+    reg signed [(2*width):0] temp_sum_booth = 0;   // temp_sum with 1 bit of extra space, for boothBit
+    reg [(2*width):0] boothMultiplicand = 0;       // Multiplicand aligned to MSB of temp_sum_booth
+    reg [(2*width):0] boothMultiplicand2s = 0;     // 2s complemented Multiplicand aligned to MSB of temp_sum_booth
+    reg [2*width:0] temp_shifted_op1 = 0;          // used for Sequential Multiplier (unsigned)
    
     always@( state, done, Start, RESET ) begin : IDLE_PROCESS  
 		// Note : This block uses non-blocking assignments to get around an unpredictable Verilog simulation behaviour.
@@ -103,11 +108,12 @@ module MCycle
             count = 0 ;
             temp_sum = 0 ;
             quotient = 0;
-            
             shifted_op1 = { {width{~MCycleOp[0] & Operand1[width-1]}}, Operand1 } ; // sign extend the operands  
-            shifted_op2 = { {width{~MCycleOp[0] & Operand2[width-1]}}, Operand2 } ; 
+            shifted_op2 = { {width{~MCycleOp[0] & Operand2[width-1]}}, Operand2 } ; // sign extend the operands
             
-            if (~MCycleOp[0]) begin     // for signed mul/div
+            /////////////////////////// DIVISION PREPROCESSING ///////////////////////////
+            
+            if (~MCycleOp[0] & MCycleOp[1]) begin     // for Signed Division Only
                 // change operands to +ve if -ve
                 if (Operand1[width-1] == 1) begin     
                     shifted_op1 = ~shifted_op1 + 1'b1;
@@ -115,42 +121,98 @@ module MCycle
                 if (Operand2[width-1] == 1) begin     
                     shifted_op2 = ~shifted_op2 + 1'b1;
                 end
-                
-                
-                if (Operand1[width-1] | Operand2[width-1]) begin      // Either of the operands are -ve
-                    sign_cases = 1;                                     // Case for -ve/-ve or +ve/-ve
-                    if (Operand1[width-1] & ~Operand2[width-1]) begin       // Case for -ve / +ve
-                        sign_cases = 2; 
-                    end
+               
+               if (Operand1[width-1]) begin      // Dividend is -ve
+                    sign_cases[0] = 1;            // To invert remainder
                 end
                 
+                if (Operand1[width-1] == ~Operand2[width-1]) begin     // if dividend and divisor are opp signs
+                    sign_cases[1] = 1;              // To invert the quotient
+                end
             end
-            
-            
             
             if (MCycleOp[1]) begin      // To fill LSBs of Divisor with 0s
                 shifted_op2 = { shifted_op2[width - 1:0], {width{1'b0}} };
             end
-           
             
-        end ;
+            /////////////////////////// MULTIPLICATION PREPROCESSING ///////////////////////////
+            if (~MCycleOp[1]) begin
+                if (~MCycleOp[0]) begin
+                    // Signed Multiplication
+                    temp_sum_booth = { {(width){1'b0}}, Operand2, {1{1'b0}} };      // store Multiplier and boothBit in LSBs
+                    boothMultiplicand = { Operand1, {(width+1){1'b0}} };
+                    boothMultiplicand2s = { (~Operand1 + 1'b1), {(width+1){1'b0}} };
+                end else begin
+                    // Unsigned Multiplication
+                    temp_sum_booth = { {(width+1){1'b0}}, Operand2};
+                    temp_shifted_op1 = { 1'b0, Operand1, {(width){1'b0}} };
+                end
+            end
+        end;
+               
         done <= 1'b0 ;   
         
-        if( ~MCycleOp[1] ) begin // Multiply
-            // if( ~MCycleOp[0] ), takes 2*'width' cycles to execute, returns signed(Operand1)*signed(Operand2)
-            // if( MCycleOp[0] ), takes 'width' cycles to execute, returns unsigned(Operand1)*unsigned(Operand2)        
-            if( shifted_op2[0] ) // add only if b0 = 1
-                temp_sum = temp_sum + shifted_op1 ; // partial product for multiplication
+        //////////////////// Multiply (Operand1 = Multiplier, Operand2 = Multiplicand) ////////////////////
+        if(~MCycleOp[1]) begin
+            // if(~MCycleOp[0]) aka signed,
+            //   - Booth's Algorithm takes (WIDTH) cycles to execute, only need to iterate through bits of Multiplier
+            //      - guaranteed not to overflow due to additional bit at LSB
+            //   - Sequential Multiplication takes (WIDTH) cycles to execute
+            //      - chance of overflow, need to consider carry bit
+            
+            // Signed Multiplication (using Booth's Algorithm)
+            if (~MCycleOp[0]) begin
                 
-            shifted_op2 = {1'b0, shifted_op2[2*width-1 : 1]} ;
-            shifted_op1 = {shifted_op1[2*width-2 : 0], 1'b0} ;    
+                case (temp_sum_booth[1:0])
+                    2'b00 : begin
+                                temp_sum_booth = temp_sum_booth >>> 1;
+                            end
+                    2'b11 : begin
+                                temp_sum_booth = temp_sum_booth >>> 1;
+                            end
+                    2'b10 : begin
+                                temp_sum_booth = temp_sum_booth + boothMultiplicand2s;
+                                temp_sum_booth = temp_sum_booth >>> 1;
+                                
+                                // if Multiplicand is the most negative number in 2s complement, then 2s complementing it again will make NO difference.
+                                // Thus, use a carry flag to deal with this (ensure that after shift operation, the result is seen as POSITIVE, i.e MSB is 0)
+                                if (Operand1[width-1] == 1'b1 && Operand1[width-2:0] == 0)
+                                    temp_sum_booth[2*width] = 1'b0;
+                            end
+                    2'b01 : begin
+                                temp_sum_booth = temp_sum_booth + boothMultiplicand;
+                                temp_sum_booth = temp_sum_booth >>> 1;
+                            end
+                endcase
                 
-            if( (MCycleOp[0] & count == width-1) | (~MCycleOp[0] & count == 2*width-1) ) // last cycle?
-                done <= 1'b1 ;   
-               
-            count = count + 1;    
+                // check if last cycle
+                if(count == width-1) begin
+                    temp_sum = temp_sum_booth[(2*width):1];    // remove boothBit from result
+                    done <= 1'b1;
+                end   
+                               
+                count = count + 1;
+            end
+            
+            
+            // Unsigned Multiplier (Sequential Algorithm)
+            else begin
+               if (temp_sum_booth[0]) begin
+                        temp_sum_booth = temp_sum_booth + temp_shifted_op1;
+                end
+                
+                temp_sum_booth = temp_sum_booth >> 1;
+                
+                if (count == width-1) begin // last cycle?
+                    done <= 1'b1;
+                    temp_sum = temp_sum_booth[(2*width-1):0];
+                end
+                
+                count = count + 1;  
+            end 
         end    
         
+        ///////////////////////////////////////////// Division /////////////////////////////////////////////
         else if (MCycleOp[1]) begin     // division.
             // shifted_op1 -- Dividend / Remainder
             // shifted_op2 -- Divisor
@@ -158,11 +220,11 @@ module MCycle
             shifted_op1 = shifted_op1 - shifted_op2;
             
             if (shifted_op1[2*width-1] == 0) begin      // remainder >= 0
-                quotient = {quotient[2:0], 1'b1};       // shift Quotient left with LSB = 1
+                quotient = {quotient[width-1:0], 1'b1};       // shift Quotient left with LSB = 1
             end
             else begin      // remainder < 0
                 shifted_op1 = shifted_op1 + shifted_op2;     // add back the divisor
-                quotient = {quotient[2:0], 1'b0};           // shift Quotient by left with LSB = 0
+                quotient = {quotient[width-1:0], 1'b0};           // shift Quotient by left with LSB = 0
             end
               
             shifted_op2 = {1'b0, shifted_op2[2*width-1:1]};  // divisor shift right
@@ -171,16 +233,15 @@ module MCycle
             
           
             if(count == width + 1) begin       // check for last cycle
-                if (sign_cases == 2'd1) begin
-                    shifted_op1[3:0] = ~shifted_op1[3:0] + 1'b1;
+                if (sign_cases[0] == 1) begin
+                    shifted_op1[width-1:0] = ~shifted_op1[width-1:0] + 1'b1;
                 end
-                if (sign_cases == 2'd2) begin 
-                    shifted_op1[3:0] = ~shifted_op1[3:0] + 1'b1;
+                if (sign_cases[1] == 1) begin 
                     quotient = ~quotient + 1'b1;
                 end
                 
-                temp_sum = {shifted_op1[3:0], quotient};   // remainder as MSW and quotient as LSW  
-                sign_cases = 0;
+                temp_sum = {shifted_op1[width-1:0], quotient};   // remainder as MSW and quotient as LSW  
+                sign_cases = 2'b0;
                 done <= 1'b1;
             end
         
@@ -188,25 +249,7 @@ module MCycle
         
         
         Result2 <= temp_sum[2*width-1 : width] ;
-        Result1 <= temp_sum[width-1 : 0] ;
-             
+        Result1 <= temp_sum[width-1 : 0] ;     
     end
    
 endmodule
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

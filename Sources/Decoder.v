@@ -36,6 +36,8 @@ module Decoder(
     input [3:0] Rd,
     input [1:0] Op,
     input [5:0] Funct,
+    input [3:0] isMULorDIV,
+    input [3:0] isDIV,
     output reg PCS = 1'b0,
     output reg RegW = 1'b0,
     output reg MemW = 1'b0,
@@ -45,12 +47,19 @@ module Decoder(
     output reg [1:0] RegSrc = 2'b00,
     output reg NoWrite = 1'b0,
     output reg [1:0] ALUControl = 2'b00,
-    output reg [1:0] FlagW = 2'b00
+    output reg [1:0] FlagW = 2'b00,
+    output reg Start = 1'b0,
+    output reg [1:0] MCycleOp = 2'b00,
+    output reg ALUorMCycle = 1'b0
     );
     
     wire [1:0] ALUOp;
     wire Branch;
     reg [1:0] ALUOp_toSend = 2'b00;
+        // 00 -> non-DP, positive offset (also Branch)
+        // 01 -> non-DP, negative offset
+        // 10 -> not defined
+        // 11 -> DP, ALU does addition/subtraction
     reg Branch_toSend = 1'b0;
     assign ALUOp = ALUOp_toSend;
     assign Branch = Branch_toSend;
@@ -59,22 +68,36 @@ module Decoder(
     // Main Decoder Logic
     // Input = Op, Funct[5] (I bit), Funct[0] (DP S bit, Memory L bit), Funct[3] (Memory U bit)
     // Output = RegW, MemW, MemtoReg, ALUSrc, ImmSrc, RegSrc
-    always @ (Op, Funct[5], Funct[0], Funct[3]) begin
+    always @ (Op, Funct[5], Funct[0], Funct[3], isMULorDIV[3:0]) begin
         case (Op)
             2'b00 : begin
                         // assert must be DP Imm or DP Reg (with immediate shift)
+                        // assert must be MUL or MLA (cannibalized as UDIV)
                         {Branch_toSend, MemtoReg, MemW} = 3'b000;
                         RegW = 1'b1;
                         ALUOp_toSend = 2'b11;
                         
                         if (Funct[5] == 0) begin
-                            // assert DP Reg
+                            // assert must be DP Reg OR MUL/MLA
                             ALUSrc = 1'b0;
                             {ImmSrc, RegSrc} = 4'b0000;   // ImmSrc == XX for DP Reg
+                            
+                            if (isMULorDIV[3:0] == 4'b1001) begin
+                                // assert must be MUL/MLA, which is also MULTICYCLE instruction
+                                Start = 1'b1; 
+                                MCycleOp[1:0] = (isDIV[3:0] == 4'b0001) ? 2'b11 : 2'b01;
+                                ALUorMCycle = 1'b1;
+                            end else begin
+                                // assert must be DP Reg
+                                Start = 1'b0;
+                                ALUorMCycle = 1'b0;
+                            end     
                         end else begin
                             // assert DP Imm
                             ALUSrc = 1'b1;
                             {ImmSrc, RegSrc} = 4'b0000;   // RegSrc == X0 for DP Imm
+                            Start = 1'b0;
+                            ALUorMCycle = 1'b0;
                         end
                     end
                     
@@ -84,6 +107,8 @@ module Decoder(
                         {MemtoReg, ALUSrc} = 2'b11;   // MemtoReg == X for STR
                         ImmSrc = 2'b01;
                         RegSrc = 2'b10;               // RegSrc == X0 for LDR
+                        Start = 1'b0;
+                        ALUorMCycle = 1'b0;
                         
                         if (Funct[3] == 0) ALUOp_toSend = 2'b01;    // U-Bit == 0 means subtract unsigned offset
                             else ALUOp_toSend = 2'b00;              // U-Bit == 1 means add unsigned offset
@@ -106,12 +131,16 @@ module Decoder(
                         {Branch_toSend, ALUSrc} = 2'b11;
                         ImmSrc = 2'b10;
                         RegSrc = 2'b01;
+                        Start = 1'b0;
+                        ALUorMCycle = 1'b0;
                     end
                     
             2'b11 : begin
                         // assert must be invalid command (all output signals X)
                         {Branch_toSend, MemtoReg, MemW, ALUSrc, RegW, ALUOp_toSend} = 6'b000000;
                         {ImmSrc, RegSrc} = 2'b00;
+                        Start = 1'b0;
+                        ALUorMCycle = 1'b0;
                     end                                      
         endcase
     end

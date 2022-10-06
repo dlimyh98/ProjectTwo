@@ -68,6 +68,8 @@ module ARM(
     wire [3:0] Rd ;
     wire [1:0] Op ;
     wire [5:0] Funct ;
+    wire [3:0] isMULDIV;
+    wire [3:0] isDIV;
     //wire PCS ;
     //wire RegW ;
     //wire MemW ;
@@ -78,6 +80,9 @@ module ARM(
     //wire NoWrite ;
     //wire [1:0] ALUControl ;
     //wire [1:0] FlagW ;
+    wire Start;
+    wire [1:0] MCycleOp;
+    wire ALUorMCycle;
     
     /************ CondLogic signals ************/
     //wire CLK ;
@@ -110,44 +115,58 @@ module ARM(
     //wire RESET ;
     wire WE_PC ;    
     wire [31:0] PC_IN ;
-    //wire [31:0] PC ; 
+    //wire [31:0] PC ;
      
+    /************ MCycle (Multiplication/Division) signals ************/
+    wire [31:0] Operand1;
+    wire [31:0] Operand2;
+    wire Busy;
+    wire [31:0] Result1;
+    wire [31:0] Result2;
+    
     /************ Other internal signals ************/    
     wire [31:0] PCPlus4 ;
     wire [31:0] PCPlus8 ;
     wire [31:0] Result ;
     assign PCPlus4 = PC + 4;
     assign PCPlus8 = PC + 8;
-    assign Result = (MemtoReg == 1'b0) ? ALUResult : ReadData;
-    
+    assign Result = (MemtoReg == 1'b1) ? ReadData :     // LDR instruction
+                    (ALUorMCycle == 1'b1) ? Result1 :   // MCycle instructions
+                    ALUResult;                          // DP and Branch instructions
     
     /************ Implement datapath connections ************/
-    assign WE_PC = 1 ; // Will need to control it for multi-cycle operations (Multiplication, Division) and/or Pipelining with hazard hardware.
+    assign WE_PC = ~Busy ; // Will need to control it for multi-cycle operations (Multiplication, Division) and/or Pipelining with hazard hardware.
     assign WriteData = RD2;
     
-    // RegFile connections
-    assign WE3 = RegWrite;
-    assign A1 = (RegSrc[0] == 1'b0) ? Instr[19:16] : 4'd15;
-    assign A2 = (RegSrc[1] == 1'b0) ? Instr[3:0] : Instr[15:12];
-    assign A3 = Instr[15:12];
-    assign WD3 = Result;
-    assign R15 = PCPlus8;
-     // RD1 and RD2 computed inside RegFile, then used in ALU and Shifter
-    
-    // ExtendModule connections
+    /////////////////////////// ExtendModule connections ///////////////////////////
     assign InstrImm = Instr[23:0];
      // ImmSrc already connected from Decoder to ExtendModule
      // ExtImm already connected from Decoder to ALU
      
-     // Decoder connections
-    assign Rd = Instr[15:12];
+    /////////////////////////// Decoder connections ///////////////////////////
+    assign Rd = (Start == 1'b1) ? Instr[19:16] : Instr[15:12];
     assign Op = Instr[27:26];
     assign Funct = Instr[25:20];
+    assign isMULDIV = Instr[7:4];
+    assign isDIV = Instr[15:12];
      // PCS, RegW, MemW, NoWrite, FlagW already connected from Decoder to CondLogic
      // ALUControl already connected from Decoder to ALU
      // MemtoReg, ALUSrc, ImmSrc, RegSrc used as multiplexer    
      
-    // CondLogic connections
+    /////////////////////////// RegFile connections ///////////////////////////
+    assign WE3 = RegWrite;
+                 
+    assign A1 = (RegSrc[0] == 1'b1) ? 4'd15 :    // Branch instructions
+                (Start == 1'b1) ? Instr[11:8] :  // UMUL, UDIV instructions
+                Instr[19:16];                    // DP, Memory instructions
+                
+    assign A2 = (RegSrc[1] == 1'b0) ? Instr[3:0] : Instr[15:12];
+    assign A3 = (Start == 1'b1) ? Instr[19:16] : Instr[15:12];
+    assign WD3 = Result;
+    assign R15 = PCPlus8;
+     // RD1 and RD2 computed inside RegFile, then used in ALU and Shifter
+     
+    /////////////////////////// CondLogic connections ///////////////////////////
     assign Cond = Instr[31:28];
      // PCS, RegW, NoWrite, MemW, FlagW already connected from Decoder to CondLogic
      // ALUFlags already connected from ALU to CondLogic
@@ -155,22 +174,28 @@ module ARM(
      // RegWrite already connected to Decoder (WE3)
      // MemWrite already connected to ARM.v's output
      
-    // Shifter connections
+    /////////////////////////// Shifter connections ///////////////////////////
     assign Sh = Instr[6:5];
     assign Shamt5 = Instr[11:7];
     assign ShIn = RD2;
      // ShOut already connected from Shifter to ALU
     
-    // ALU connections
+    /////////////////////////// ALU connections ///////////////////////////
     assign Src_A = RD1;
     assign Src_B = (ALUSrc == 1'b0) ? ShOut : ExtImm;
      // ALUControl already connected from Decoder to ALU
      // ALUResult already connected from ALU to ARM.v's output
      // ALUFlags already connected from ALU to CondLogic
      
-   // ProgramCounter connections
+   /////////////////////////// ProgramCounter connections ///////////////////////////
    assign PC_IN = (PCSrc == 1'b0) ? PCPlus4 : Result;
-  
+   
+   /////////////////////////// MCycle connections ///////////////////////////
+   // RD1 = Rs (operand2)
+   // RD2 = Rm (operand1)
+   // Rd = Rm * Rs, Rd = Rm / Rs
+   assign Operand1 = RD2;   // not making use of Shifter for MCycle
+   assign Operand2 = RD1;
    
    /************ Instantations ************/
     
@@ -199,6 +224,8 @@ module ARM(
                     Rd,
                     Op,
                     Funct,
+                    isMULDIV,
+                    isDIV,
                     PCS,
                     RegW,
                     MemW,
@@ -208,7 +235,10 @@ module ARM(
                     RegSrc,
                     NoWrite,
                     ALUControl,
-                    FlagW
+                    FlagW,
+                    Start,
+                    MCycleOp,
+                    ALUorMCycle
                 );
                                 
     // Instantiate CondLogic
@@ -236,12 +266,12 @@ module ARM(
                 
     // Instantiate ALU        
     ALU ALU1(
-                    Src_A,
-                    Src_B,
-                    ALUControl,
-                    ALUResult,
-                    ALUFlags
-                );                
+               Src_A,
+               Src_B,
+               ALUControl,
+               ALUResult,
+               ALUFlags
+             );                
     
     // Instantiate ProgramCounter    
     ProgramCounter ProgramCounter1(
@@ -250,13 +280,18 @@ module ARM(
                     WE_PC,    
                     PC_IN,
                     PC  
-                );                             
+                );
+                
+     // Instantiate MCycle
+     MCycle MCycle1 (
+                     CLK,
+                     RESET,
+                     Start,
+                     MCycleOp,
+                     Operand1,
+                     Operand2,
+                     Result1,
+                     Result2,
+                     Busy
+                );                 
 endmodule
-
-
-
-
-
-
-
-
