@@ -47,13 +47,20 @@ module test_Wrapper #(
     // Lab 3 Stimuli
     initial begin
         
-        DIP = 16'b0000_0101_1101_1011;  // 0x05DB x 0x0CC = 0x4AA84
         PB = 3'b010;                    // BTNC being pressed (MUL instruction)
+        DIP = 16'b0000_0101_1101_1011;  // 0x5DB x 0xCC = 0x4AA84
+        #100;
+        DIP = 16'b0000_0000_0000_0000;  // 0x0000 x 0x0CC = 0x0
         
+        #150;
         
-        DIP = 16'b0000_0101_1101_1011;  // 0x05DB / 0xBB = 8 R 3
-        PB = 3'b000;                    // BTNC not being pressed (DIV instruction)
-        
+        PB = 3'b000;                   // BTNC not being pressed (DIV instruction)
+        DIP = 16'b0000_0101_1101_1011;  // 0x0DB / 0xBB = 8 R 3
+        #100;
+        DIP = 16'b0000_0000_0000_0000;  // 0x0 / 0xBB = 0 R 0
+        #100;
+        DIP = 16'b0000_0000_1010_1010;  // 0xAA / 0xBB = 0 R 0xAA
+           
     end
     
     

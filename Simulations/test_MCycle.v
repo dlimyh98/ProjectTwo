@@ -72,9 +72,8 @@ module test_MCycle(
         // Operand1 = Multiplicand,  Operand2 = Multiplier
         
         ////////////////////// SIGNED MULTIPLICATION TESTS //////////////////////
-        /*
-        MCycleOp = 2'b00;
         
+        MCycleOp = 2'b00;
         
         // -1 x -1 = 1 or 8'b0000_0001
         Operand1 = 4'b1111 ;    
@@ -86,7 +85,6 @@ module test_MCycle(
         #10 ;
         Start = 1'b0 ;
         #10 ;
-        
         
         // -7 * -7 = 49 or 8'b0011_0001
         Operand1 = 4'b1001;
@@ -131,7 +129,7 @@ module test_MCycle(
         Operand2 = 4'b1000;
         wait(Busy);
         wait(~Busy);
-        */
+        
         
         ////////////////////// UNSIGNED MULTIPLICATION TESTS //////////////////////
         MCycleOp = 2'b01 ;
@@ -147,10 +145,11 @@ module test_MCycle(
         Start = 1'b0 ;
         #10 ;
         
+        
    
         /************************************* DIVISION TEST CASES *************************************/
         // 10: signed, 11: unsigned
-        /*
+        
         
         // -ve / +ve
         MCycleOp = 2'b10 ;      
@@ -166,7 +165,7 @@ module test_MCycle(
         
         // -ve / -ve
         MCycleOp = 2'b10 ;      
-        // -6 / -4 = 1 R -2 or 0001 R 1111
+        // -6 / -4 = 1 R -2 or 0001 R 1110
         Operand1 = 4'b1010 ;        // 0xA
         Operand2 = 4'b1100 ;        // 0xC
         Start = 1'b1 ;
@@ -186,6 +185,7 @@ module test_MCycle(
         wait(~Busy) ; 
         Start = 1'b0 ;
         
+        
         // +ve / -ve
         MCycleOp = 2'b10 ;      
         // 3 / -2 = -1 R 1 or 1111 R 0001
@@ -196,9 +196,12 @@ module test_MCycle(
         wait(~Busy) ; 
         Start = 1'b0 ;
         
+        
+        
+        
         // Divide 0 (unsigned)
         MCycleOp = 2'b11 ;      
-        // 0 / 5 = 0 R 5 or 0000 R 0101
+        // 0 / 5 = 0 R 0 or 0000 R 0000
         Operand1 = 4'b0000 ;        // 0x0
         Operand2 = 4'b0101 ;        // 0x5
         Start = 1'b1 ;
@@ -206,15 +209,18 @@ module test_MCycle(
         wait(~Busy) ; 
         Start = 1'b0 ;
         
+        
+        
         // Divide 0 (signed)
         MCycleOp = 2'b10 ;      
-        // 0 / -2 = 0 R -2 or 0000 R 1110 
+        // 0 / -2 = 0 R 0 or 0000 R 0000 
         Operand1 = 4'b0000 ;        // 0x0
         Operand2 = 4'b1110 ;        // 0xE
         Start = 1'b1 ;
         wait(Busy) ; 
         wait(~Busy) ; 
         Start = 1'b0 ;
+        
         
         // Divisor > Dividend
         MCycleOp = 2'b11 ;      
@@ -235,7 +241,9 @@ module test_MCycle(
         wait(Busy) ; 
         wait(~Busy) ; 
         Start = 1'b0 ;
-        */
+        
+        
+        
         
     end
      
