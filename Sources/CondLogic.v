@@ -43,7 +43,8 @@ module CondLogic(
     input [3:0] ALUFlags,
     output PCSrc,
     output RegWrite,
-    output MemWrite
+    output MemWrite,
+    output C_Flag
     );
     
     reg CondEx ;
@@ -94,20 +95,6 @@ module CondLogic(
     assign PCSrc = PCS & CondEx;
     assign RegWrite = RegW & CondEx & (~NoWrite);
     assign MemWrite = MemW & CondEx;
+    assign C_Flag = C;
     
-    
-
 endmodule
-
-
-
-
-
-
-
-
-
-
-
-
-

@@ -83,6 +83,7 @@ module ARM(
     wire Start;
     wire [1:0] MCycleOp;
     wire ALUorMCycle;
+    wire isADC;
     
     /************ CondLogic signals ************/
     //wire CLK ;
@@ -96,6 +97,7 @@ module ARM(
     wire PCSrc ;
     wire RegWrite ; 
     //wire MemWrite
+    wire C_Flag;
     
     /************ Shifter signals (no Register-shifted Register support yet) ************/   
     wire [1:0] Sh ;
@@ -238,7 +240,8 @@ module ARM(
                     FlagW,
                     Start,
                     MCycleOp,
-                    ALUorMCycle
+                    ALUorMCycle,
+                    isADC
                 );
                                 
     // Instantiate CondLogic
@@ -253,7 +256,8 @@ module ARM(
                     ALUFlags,
                     PCSrc,
                     RegWrite,
-                    MemWrite
+                    MemWrite,
+                    C_Flag
                 );
                 
     // Instantiate Shifter        
@@ -269,6 +273,8 @@ module ARM(
                Src_A,
                Src_B,
                ALUControl,
+               C_Flag,
+               isADC,
                ALUResult,
                ALUFlags
              );                

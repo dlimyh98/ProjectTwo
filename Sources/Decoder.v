@@ -50,7 +50,8 @@ module Decoder(
     output reg [1:0] FlagW = 2'b00,
     output reg Start = 1'b0,
     output reg [1:0] MCycleOp = 2'b00,
-    output reg ALUorMCycle = 1'b0
+    output reg ALUorMCycle = 1'b0,
+    output reg isADC = 1'b0
     );
     
     wire [1:0] ALUOp;
@@ -67,6 +68,7 @@ module Decoder(
     
     // Main Decoder Logic
     // Input = Op, Funct[5] (I bit), Funct[0] (DP S bit, Memory L bit), Funct[3] (Memory U bit)
+    //         isMULorDIV[3:0] (Instr[7:4]), isDIV[3:0] (Instr[15:12])
     // Output = RegW, MemW, MemtoReg, ALUSrc, ImmSrc, RegSrc
     always @ (Op, Funct[5], Funct[0], Funct[3], isMULorDIV[3:0], isDIV[3:0]) begin
         MCycleOp[1:0] = 2'b00;  // stop inferring latch problem
@@ -165,6 +167,8 @@ module Decoder(
     // Input = ALUOp, Funct[4:0] (Funt[5] is I bit)
     // Output = ALUControl[1:0] and FlagW[1:0]
     always @ (ALUOp, Funct[4:0]) begin
+        isADC = 1'b0;   // remove inferring latch problem
+        
         case (ALUOp)
             2'b00 : begin
                         // assert must be positive offset STR/LDR (with unsigned offset)
@@ -172,6 +176,7 @@ module Decoder(
                         ALUControl = 2'b00;
                         FlagW = 2'b00;
                         NoWrite = 1'b0;
+                        isADC = 1'b0;
                     end
                     
             2'b01 : begin
@@ -179,13 +184,17 @@ module Decoder(
                         ALUControl = 2'b01;
                         FlagW = 2'b00;
                         NoWrite = 1'b0;
+                        isADC = 1'b0;
                     end
                     
             2'b11 : begin
                         // assert must be DP instructions (positive/negative offset)
                         FlagW = Funct[0] ? 2'b11 : 2'b00;
                         NoWrite = 1'b0;
+                        isADC = 1'b0;
                         
+                        // - Funct[4:0] -> [cmd3] [cmd2] [cmd1] [cmd0] [S]
+                        // - FlagW[1:0] -> [N&Z] [C&V]
                         case (Funct[4:1])   // Funct[4:1] == cmd (DP) or PUBW (Memory)
                             4'b0100 : begin // ADD or ADDS (set NZCV flags)
                                           ALUControl = 2'b00;
@@ -204,20 +213,25 @@ module Decoder(
                                           FlagW = (Funct[0] == 1'b1) ? 2'b10 : 2'b00;
                                       end
                             4'b1010 : begin // CMP (set NZCV flags automatically)
-                                ALUControl = 2'b01;
-                                FlagW = 2'b11;
-                                NoWrite = 1'b1;
-                            end
+                                          ALUControl = 2'b01;
+                                          FlagW = 2'b11;
+                                          NoWrite = 1'b1;
+                                      end
                             4'b1011 : begin // CMN (set NZCV flags automatically)
-                                ALUControl = 2'b00;
-                                FlagW = 2'b11;
-                                NoWrite = 1'b1;
-                            end       
+                                          ALUControl = 2'b00;
+                                          FlagW = 2'b11;
+                                          NoWrite = 1'b1;
+                                      end
+                            4'b0101 : begin // ADC (set NZCV flags)
+                                          ALUControl = 2'b00;
+                                          FlagW = (Funct[0] == 1'b1) ? 2'b11 : 2'b00;
+                                          isADC = 1'b1;
+                                      end       
                             default : begin // undefined signals
                                 ALUControl = 2'b00;
                                 FlagW = 2'b00;
                                 NoWrite = 1'b0;
-                            end
+                                      end
                         endcase
                     end
                     

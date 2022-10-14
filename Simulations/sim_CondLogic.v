@@ -39,7 +39,8 @@ module sim_CondLogic(
     CondLogic dut(CLK, PCS, RegW, NoWrite, MemW, FlagW, Cond, ALUFlags, PCSrc, RegWrite, MemWrite);
     
     initial begin
-        #5; // for a STR instruc
+        // STR instruction
+        #10; 
         PCS = 0;
         RegW = 0;
         NoWrite = 0;
@@ -47,8 +48,9 @@ module sim_CondLogic(
         FlagW = 2'b0;
         Cond = 4'b1110;
         ALUFlags = 4'b0;
+        
+        // ADDEQS instruction
         #10;
-        // for ADDEQS instruc
         PCS = 0;
         RegW = 1;
         NoWrite = 0;

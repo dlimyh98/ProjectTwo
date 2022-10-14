@@ -17,30 +17,20 @@
 		LDR R1, DIPS               ; R1 = address of DIPS (0x00000C04)
 		LDR R2, PBS                ; R2 = address of PBS (0x00000C08)
 		LDR R3, SEVENSEG           ; R3 = address of SEVENSEG (0x00000C18)
-		LDR R4, MULTIPLY_AMOUNT    ; R4 = 0xCC = 0b1100_1100
-		LDR R5, DIVIDE_AMOUNT      ; R5 = 0xBB = 0b1011_1011
+		LDR R4, ARITHMETIC_AMOUNT  ; R4 = 0x1 = 0b0000_0001
+		LDR R5, OVERFLOW_AMOUNT    ; R5 = 0xFFFFFFFF
 		
 main_loop
 		LDR R6, [R1]		   ; R6 = DIPS, use this if manually flipping switches onboard
-		;LDR R6, DIPS_SIMUL    ; use this to simulate DIPS (0x05DB = 0b0000_0101_1101_1011)
-		LDR R7, [R2]           ; R7 = PBS, use this if manually pressing BTNC to toggle between MUL and MLA
-		;LDR R7, BTNC_SIMUL    ; R7 = 0x2, use this to simulate BTNC being pressed
-		LDR R8, ZERO           ; reset result seen on SEVENSEG
+		;LDR R6, DIPS_SIMUL    ; use this to simulate DIPS (0x2 = 0b0000_0000_0000_0002)
+		LDR R7, ZERO           ; reset result seen on SEVENSEG
 		
-		CMP R7, #0x2           ; MUL -> R7 = 0x2 (BTNC pressed), MLA -> R7 = 0 (BTNC not pressed);
-		BEQ multiplication_loop
-		B division_loop
-		
-multiplication_loop
-		MUL R8, R6, R4       ; R8 = R6*R4, should be 0x4AA84 if using DIPS_SIMUL
-        STR R8, [R3]         ; display R8 on SEVENSEG		
-		B main_loop
-		
-division_loop		         ; MLA Rd, Rm, Rs, Rn
-							 ; MLA R8, R6, R5, R15
-		MLA R8, R6, R5, R1   ; R8 = R6/R5, set Rn to be 4'd1 to differentiate it from MUL
-						     ; 0x05DB / 0xBB = 8 R 3, where 8 (quotient) stored in R8
-        STR R8, [R3]         ; display R8 on SEVENSEG
+		ADDS R7, R4, R5        ; R7 = R4 + R5, purposefully cause an UNSIGNED overflow (C flag set to 1)
+						       ; R7 should be 0x0 now
+							   
+		ADCS R7, R7, R4        ; R7 = R7 + R4 + C_Flag, R7 should be 0x2, (C flag should be reset to 0)
+        STR R7, [R3]           ; display R7 on SEVENSEG
+
 		B main_loop
 		
 halt	
@@ -74,16 +64,12 @@ SEVENSEG
 ; Rest of the constants should be declared below.
 ZERO
 		DCD 0x00000000		; constant 0
-MULTIPLY_AMOUNT
-        DCD 0xCC
-DIVIDE_AMOUNT
-		DCD 0xBB
+OVERFLOW_AMOUNT
+		DCD 0xFFFFFFFF
+ARITHMETIC_AMOUNT
+		DCD 0x00000001
 DIPS_SIMUL
-        DCD 0x000005DB
-BTNC_SIMUL
-		DCD 0x00000002
-ONES
-		DCD 0xF
+        DCD 0x00000002
 LSB_MASK
 		DCD 0x000000FF		; constant 0xFF
 variable1_addr

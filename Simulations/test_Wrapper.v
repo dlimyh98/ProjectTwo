@@ -22,7 +22,7 @@ module test_Wrapper #(
 	
 	// Signals for the Unit Under Test (UUT)
 	reg [N_DIPs-1:0] DIP = 0;		
-	reg [N_PBs-1:0] PB = 0;			
+	//reg [N_PBs-1:0] PB = 0;			
 	//wire [N_LEDs_OUT-1:0] LED_OUT;
 	wire [6:0] LED_PC;			
 	wire [31:0] SEVENSEGHEX;	
@@ -36,7 +36,7 @@ module test_Wrapper #(
 	reg  CLK_undiv = 0;				
 	
 	// Instantiate UUT
-	Wrapper dut(.DIP(DIP), .PB(PB), .LED_PC(LED_PC), .SEVENSEGHEX(SEVENSEGHEX), .RESET(RESET), .CLK(CLK_undiv)) ;
+	Wrapper dut(.DIP(DIP), .LED_PC(LED_PC), .SEVENSEGHEX(SEVENSEGHEX), .RESET(RESET), .CLK(CLK_undiv)) ;
 	
 	// GENERATE CLOCK       
     always          
@@ -44,9 +44,13 @@ module test_Wrapper #(
        #5 CLK_undiv = ~CLK_undiv ; // invert clk every 5 time units 
     end
     
+    // Lab 4 Stimuli
+       initial begin
+           DIP = 16'b0000_0000_0000_0001;  // ADC test, should see 0x2
+       end
+    
     // Lab 3 Stimuli
-    initial begin
-        
+    /*initial begin
         PB = 3'b010;                    // BTNC being pressed (MUL instruction)
         DIP = 16'b0000_0101_1101_1011;  // 0x5DB x 0xCC = 0x4AA84
         #100;
@@ -60,8 +64,7 @@ module test_Wrapper #(
         DIP = 16'b0000_0000_0000_0000;  // 0x0 / 0xBB = 0 R 0
         #100;
         DIP = 16'b0000_0000_1010_1010;  // 0xAA / 0xBB = 0 R 0xAA
-           
-    end
+    end*/
     
     
     // Lab 2 Stimuli
@@ -79,8 +82,7 @@ module test_Wrapper #(
         DIP = 16'b0000_0101_1101_1011;
         #300;
         DIP = 16'b1010_0001_1000_1000;
-    end
-    */
+    end*/
     
 	// UART Stimuli
     /*initial
