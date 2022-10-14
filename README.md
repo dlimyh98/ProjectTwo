@@ -1,7 +1,7 @@
 # DP Instructions #
 
 ## Lab 4 (w.r.t Lab 4's .asm code) ##
-1. ADC - Add with Carry `ADCS R7, R7, R4`
+1. ADC - Add with Carry `ADCS R7, R4, R5`
       - confirmed that ADCS correctly updates Flags
 3. BIC - Logical Bit Clear
 4. EOR - Logical EOR
@@ -40,7 +40,7 @@
 1. `BNE delay_loop`
 
 ### ALUOp_toSend
-00 -> non-DP, positive offset (also Branch)
-01 -> non-DP, negative offset
-10 -> not defined
+00 -> non-DP, positive offset (also Branch)  
+01 -> non-DP, negative offset  
+10 -> not defined  
 11 -> DP, positive/negative offset
