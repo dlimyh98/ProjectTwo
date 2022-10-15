@@ -3,8 +3,10 @@
 ## Lab 4 (w.r.t Lab 4's .asm code) ##
 1. ADC - Add with Carry `ADCS R7, R4, R5`
       - confirmed that ADCS correctly updates Flags
+      - verified sets NZCV flags
 3. BIC - Logical Bit Clear
       - Src_B_comp is updated at end of always@(...) block, NOT end of clock cycle
+      - to verify that sets NZC flags, need to modify shifter_carry_out
 4. EOR - Logical EOR
 5. MOV
 6. MVN
@@ -17,7 +19,7 @@
 ### POTENTIAL IMPROVEMENTS ###
 1. Pipelining
 2. support #imm8 with rotation
-3. Shifter will affect C flag
+3. Shifter will affect C flag (mostly done already)
 
 ## From Lab 2 (w.r.t Lab 2's .asm code) ##
 ### Memory

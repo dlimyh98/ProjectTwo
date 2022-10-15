@@ -34,6 +34,7 @@ module ALU(
     input C_Flag,
     input isADC,
     input isBIC,
+    input Shifter_carryOut,
     output [31:0] ALUResult,
     output [3:0] ALUFlags
     );
@@ -49,6 +50,12 @@ module ALU(
     assign S_wider = (isADC == 1'b1) ? Src_A_comp + Src_B_comp + C_0 + C_Flag :
                      (isBIC == 1'b1) ? Src_A_comp & Src_B_comp :
                                        Src_A_comp + Src_B_comp + C_0;
+   
+    assign N = ALUResult_i[31] ;
+    assign Z = (ALUResult_i == 0) ? 1 : 0 ;
+    assign C = (ALUControl == 2'b00 || ALUControl == 2'b01) ? S_wider[32] : Shifter_carryOut;
+    assign ALUResult = ALUResult_i ;
+    assign ALUFlags = {N, Z, C, V} ;                                    
     
     
     always@(Src_A, Src_B, ALUControl, S_wider) begin
@@ -79,11 +86,4 @@ module ALU(
         endcase ;
     end
     
-    assign N = ALUResult_i[31] ;
-    assign Z = (ALUResult_i == 0) ? 1 : 0 ;
-    assign C = S_wider[32] ;
-    
-    assign ALUResult = ALUResult_i ;
-    assign ALUFlags = {N, Z, C, V} ;
-        
 endmodule

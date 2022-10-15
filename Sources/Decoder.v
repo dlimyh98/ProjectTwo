@@ -47,7 +47,7 @@ module Decoder(
     output reg [1:0] RegSrc = 2'b00,
     output reg NoWrite = 1'b0,
     output reg [1:0] ALUControl = 2'b00,
-    output reg [1:0] FlagW = 2'b00,
+    output reg [3:0] FlagW = 4'b0000,
     output reg Start = 1'b0,
     output reg [1:0] MCycleOp = 2'b00,
     output reg ALUorMCycle = 1'b0,
@@ -166,7 +166,7 @@ module Decoder(
     
     // ALU Decoder Logic
     // Input = ALUOp, Funct[4:0] (Funt[5] is I bit)
-    // Output = ALUControl[1:0] and FlagW[1:0]
+    // Output = ALUControl[1:0] and FlagW[3:0]
     always @ (ALUOp, Funct[4:0]) begin
         NoWrite = 1'b0;
         isADC = 1'b0;
@@ -177,68 +177,69 @@ module Decoder(
                         // assert must be positive offset STR/LDR (with unsigned offset)
                         // assert must be B (with signed offset)
                         ALUControl = 2'b00;
-                        FlagW = 2'b00;
+                        FlagW = 4'b0000;
                     end
                     
             2'b01 : begin
                         // assert must be negative offset STR/LDR (with unsigned offset)
                         ALUControl = 2'b01;
-                        FlagW = 2'b00;
+                        FlagW = 4'b0000;
                     end
                     
             2'b11 : begin
                         // assert must be DP instructions (positive/negative offset)
-                        FlagW = Funct[0] ? 2'b11 : 2'b00;
+                        FlagW = Funct[0] ? 4'b1111 : 4'b0000;
                         
                         // - Funct[4:0] -> [cmd3] [cmd2] [cmd1] [cmd0] [S]
-                        // - FlagW[1:0] -> [N&Z] [C&V]
+                        // - FlagW[3:0] -> [N] [Z] [C] [V]
                         case (Funct[4:1])   // Funct[4:1] == cmd (DP) or PUBW (Memory)
                             4'b0100 : begin // ADD or ADDS (sets NZCV flags)
                                           ALUControl = 2'b00;
-                                          FlagW = (Funct[0] == 1'b1) ? 2'b11 : 2'b00;
+                                          FlagW = (Funct[0] == 1'b1) ? 4'b1111 : 4'b0000;
                                       end
                             4'b0010 : begin // SUB or SUBS (sets NZCV flags)
                                           ALUControl = 2'b01; 
-                                          FlagW = (Funct[0] == 1'b1) ? 2'b11 : 2'b00;
+                                          FlagW = (Funct[0] == 1'b1) ? 4'b1111 : 4'b0000;
                                       end
                             4'b0000 : begin // AND or ANDS (for now doesn't affect C flag)
                                           ALUControl = 2'b10;
-                                          FlagW = (Funct[0] == 1'b1) ? 2'b10 : 2'b00;
+                                          FlagW = (Funct[0] == 1'b1) ? 4'b1100 : 4'b0000;
                                       end              
                             4'b1100 : begin // ORR or ORRS (for now doesn't affect C flag)
                                           ALUControl = 2'b11;
-                                          FlagW = (Funct[0] == 1'b1) ? 2'b10 : 2'b00;
+                                          FlagW = (Funct[0] == 1'b1) ? 4'b1100 : 4'b0000;
                                       end
-                            4'b1010 : begin // CMP (sets NZCV flags automatically)
+                            4'b1010 : begin // CMP (sets NZCV flags)
                                           ALUControl = 2'b01;
-                                          FlagW = 2'b11;
+                                          FlagW = 4'b1111;
                                           NoWrite = 1'b1;
                                       end
-                            4'b1011 : begin // CMN (sets NZCV flags automatically)
+                            4'b1011 : begin // CMN (sets NZCV flags)
                                           ALUControl = 2'b00;
-                                          FlagW = 2'b11;
+                                          FlagW = 4'b1111;
                                           NoWrite = 1'b1;
                                       end
                             4'b0101 : begin // ADC (sets NZCV flags)
                                           ALUControl = 2'b00;
-                                          FlagW = (Funct[0] == 1'b1) ? 2'b11 : 2'b00;
+                                          FlagW = (Funct[0] == 1'b1) ? 4'b1111 : 4'b0000;
                                           isADC = 1'b1;
                                       end
-                            4'b1110 : begin  // BIC (sets NZCV flags)
+                            4'b1110 : begin // BIC (sets NZC flags)
                                           ALUControl = 2'b01;
-                                          FlagW = (Funct[0] == 1'b1) ? 2'b11 : 2'b00;
+                                          FlagW = (Funct[0] == 1'b1) ? 4'b1110 : 4'b0000;
                                           isBIC = 1'b1;
                                       end
                             default : begin // undefined signals
                                           ALUControl = 2'b00;
-                                          FlagW = 2'b00;
+                                          FlagW = 4'b0000;
                                       end
                         endcase
                     end
                     
             2'b10 : begin
                         // assert undefined
-                        {ALUControl, FlagW, NoWrite} = 2'b00;
+                        {ALUControl, NoWrite} = 2'b00;
+                        FlagW = 4'b0000;
                     end
         endcase            
     end

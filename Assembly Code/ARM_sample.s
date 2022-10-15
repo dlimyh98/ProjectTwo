@@ -30,6 +30,7 @@ main_loop
 							   
 		ADCS R7, R7, R4        ; R7 = R7 + R4 + C_Flag = 0x3, (C flag should be reset to 0)
 		BIC R7, R7, #1         ; R7 = R7 & ~0x1 = 0x2
+		SUB R7, R7, #1
 		
         STR R7, [R3]           ; display R7 on SEVENSEG
 

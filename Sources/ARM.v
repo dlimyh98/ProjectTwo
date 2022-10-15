@@ -79,7 +79,7 @@ module ARM(
     wire [1:0] RegSrc ;
     //wire NoWrite ;
     //wire [1:0] ALUControl ;
-    //wire [1:0] FlagW ;
+    //wire [3:0] FlagW ;
     wire Start;
     wire [1:0] MCycleOp;
     wire ALUorMCycle;
@@ -92,7 +92,7 @@ module ARM(
     wire RegW ;
     wire NoWrite ;
     wire MemW ;
-    wire [1:0] FlagW ;
+    wire [3:0] FlagW ;
     wire [3:0] Cond ;
     //wire [3:0] ALUFlags,
     wire PCSrc ;
@@ -105,6 +105,7 @@ module ARM(
     wire [4:0] Shamt5 ;
     wire [31:0] ShIn ;
     wire [31:0] ShOut ;
+    wire Shifter_carryOut;
     
     /************ ALU signals ************/
     wire [31:0] Src_A ;
@@ -267,7 +268,9 @@ module ARM(
                     Sh,
                     Shamt5,
                     ShIn,
-                    ShOut
+                    C_Flag,
+                    ShOut,
+                    Shifter_carryOut
                 );
                 
     // Instantiate ALU        
@@ -278,6 +281,7 @@ module ARM(
                C_Flag,
                isADC,
                isBIC,
+               Shifter_carryOut,
                ALUResult,
                ALUFlags
              );                

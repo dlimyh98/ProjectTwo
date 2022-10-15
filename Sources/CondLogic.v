@@ -38,7 +38,7 @@ module CondLogic(
     input RegW,
     input NoWrite, // for CMP
     input MemW,
-    input [1:0] FlagW,
+    input [3:0] FlagW,
     input [3:0] Cond,
     input [3:0] ALUFlags,
     output PCSrc,
@@ -49,8 +49,18 @@ module CondLogic(
     
     reg CondEx ;
     reg N = 0, Z = 0, C = 0, V = 0 ;
-    wire [1:0] FlagWrite;
+    wire [3:0] FlagWrite;
     //<extra signals, if any>
+    
+    assign FlagWrite[3] = FlagW[3] & CondEx;
+    assign FlagWrite[2] = FlagW[2] & CondEx;
+    assign FlagWrite[1] = FlagW[1] & CondEx;
+    assign FlagWrite[0] = FlagW[0] & CondEx;
+    
+    assign PCSrc = PCS & CondEx;
+    assign RegWrite = RegW & CondEx & (~NoWrite);
+    assign MemWrite = MemW & CondEx;
+    assign C_Flag = C;
     
     always@(Cond, N, Z, C, V)
     begin
@@ -78,23 +88,17 @@ module CondLogic(
     end
         
     always@(posedge CLK) begin
-        if (FlagWrite[1]) begin
+        if (FlagWrite[3]) 
             N <= ALUFlags[3];
-            Z <= ALUFlags[2];
-        end
             
-        if (FlagWrite[0]) begin
+        if (FlagWrite[2]) 
+            Z <= ALUFlags[2];
+            
+        if (FlagWrite[1]) 
             C <= ALUFlags[1];
-            V <= ALUFlags[0];
-        end    
-         
+            
+         if (FlagWrite[0]) 
+            V <= ALUFlags[0];  
     end
-    
-    assign FlagWrite[1] = FlagW[1] & CondEx;
-    assign FlagWrite[0] = FlagW[0] & CondEx;
-    assign PCSrc = PCS & CondEx;
-    assign RegWrite = RegW & CondEx & (~NoWrite);
-    assign MemWrite = MemW & CondEx;
-    assign C_Flag = C;
     
 endmodule

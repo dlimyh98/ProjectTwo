@@ -36,7 +36,9 @@ module Shifter(
     input [1:0] Sh,
     input [4:0] Shamt5,
     input [31:0] ShIn,
-    output [31:0] ShOut
+    input current_CFlag,
+    output [31:0] ShOut,
+    output reg Shifter_carryOut = 1'b0
     );
       
     wire [31:0] ShTemp0 ;
@@ -45,14 +47,23 @@ module Shifter(
     wire [31:0] ShTemp3 ;
     wire [31:0] ShTemp4 ;
                     
-    assign ShTemp0 = ShIn ;
+    assign ShTemp0 = ShIn;
+    
+    always @ (Sh, Shamt5, ShIn, current_CFlag) begin
+        case (Sh)
+            2'b00 : Shifter_carryOut = (Shamt5 == 5'd0) ? current_CFlag : ShIn[32-Shamt5];  // LSL
+            2'b01 : Shifter_carryOut = (Shamt5 == 5'd0) ? current_CFlag : ShIn[Shamt5-1];   // LSR
+            2'b10 : Shifter_carryOut = (Shamt5 == 5'd0) ? current_CFlag : ShIn[Shamt5-1];   // ASR
+            2'b11 : Shifter_carryOut = ShIn[Shamt5-1];                                      // ROR, where ROR by #0 = RRX
+        endcase
+    end
+    
     shiftByNPowerOf2#(0) shiftBy0PowerOf2( Sh, Shamt5[0], ShTemp0, ShTemp1 ) ;
     shiftByNPowerOf2#(1) shiftBy1PowerOf2( Sh, Shamt5[1], ShTemp1, ShTemp2 ) ;
     shiftByNPowerOf2#(2) shiftBy2PowerOf2( Sh, Shamt5[2], ShTemp2, ShTemp3 ) ;
     shiftByNPowerOf2#(3) shiftBy3PowerOf2( Sh, Shamt5[3], ShTemp3, ShTemp4 ) ;
     shiftByNPowerOf2#(4) shiftBy4PowerOf2( Sh, Shamt5[4], ShTemp4, ShOut ) ;
-
-	
+    
 endmodule
 
 
@@ -69,10 +80,10 @@ module shiftByNPowerOf2
     always@(Sh, ShTempIn, flagShift) begin
         if(flagShift)
             case(Sh)
-                2'b00: ShTempOut <= { ShTempIn[31-2**i:0], {2**i{1'b0}} } ;      // LSL
-                2'b01: ShTempOut <= { {2**i{1'b0}}, ShTempIn[31:2**i] } ;        // LSR    
-                2'b10: ShTempOut <= { {2**i{ShTempIn[31]}}, ShTempIn[31:2**i] } ;   // ASR   
-                2'b11: ShTempOut <= { ShTempIn[2**i-1:0], ShTempIn[31:2**i] } ;  // ROR
+                2'b00: ShTempOut <= { ShTempIn[31-2**i:0], {2**i{1'b0}} } ;        // LSL
+                2'b01: ShTempOut <= { {2**i{1'b0}}, ShTempIn[31:2**i] } ;          // LSR
+                2'b10: ShTempOut <= { {2**i{ShTempIn[31]}}, ShTempIn[31:2**i] } ;  // ASR
+                2'b11: ShTempOut <= { ShTempIn[2**i-1:0], ShTempIn[31:2**i] } ;    // ROR
             endcase   
         else
             ShTempOut <= ShTempIn ;
