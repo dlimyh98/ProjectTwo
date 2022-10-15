@@ -16,7 +16,8 @@
 ### POTENTIAL IMPROVEMENTS ###
 1. Pipelining
 2. support #imm8 with rotation
-3. Shifter will affect C flag (DONE)
+3. Src2 supports Register shifted Register, e.g. `MOV R1, R1, R2, LSR R3`
+4. Shifter will affect C flag (DONE)
 
 ## From Lab 2 (w.r.t Lab 2's .asm code) ##
 ### Memory
