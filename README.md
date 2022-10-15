@@ -2,7 +2,7 @@
 
 ## Lab 4 (w.r.t Lab 4's .asm code) ##
 1. ADC - Add with Carry `ADCS R7, R4, R5`
-2. BIC - Logical Bit Clear 'BICS R7, R7, R8, LSR #7'
+2. BIC - Logical Bit Clear `BICS R7, R7, R8, LSR #7`
       - Src_B_comp is updated at end of always@(...) block, NOT end of clock cycle
 3. EOR - Logical EOR `EOR R7, R7, R5`
 4. MOV - Move `MOV R5, #0xFFFFFFFF`
