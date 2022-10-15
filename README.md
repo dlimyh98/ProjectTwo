@@ -2,19 +2,16 @@
 
 ## Lab 4 (w.r.t Lab 4's .asm code) ##
 1. ADC - Add with Carry `ADCS R7, R4, R5`
-      - confirmed that ADCS correctly updates Flags
-      - verified NZCV flags set correctly
-3. BIC - Logical Bit Clear
+2. BIC - Logical Bit Clear 'BICS R7, R7, R8, LSR #7'
       - Src_B_comp is updated at end of always@(...) block, NOT end of clock cycle
-      - verified NZC flags set (V not set together with C anymore)
-4. EOR - Logical EOR
-5. MOV
-6. MVN
-7. RSB
-8. RSC
-9. SBC
-10. TEQ
-11. TST
+3. EOR - Logical EOR `EOR R7, R7, R5`
+4. MOV - Move `MOV R5, #0xFFFFFFFF`
+5. MVN - Move Not `MVNCSS R5, R8`
+6. RSB
+7. RSC
+8. SBC
+9. TEQ
+10. TST
 
 ### POTENTIAL IMPROVEMENTS ###
 1. Pipelining

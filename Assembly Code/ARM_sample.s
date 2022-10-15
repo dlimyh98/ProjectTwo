@@ -19,20 +19,27 @@
 		LDR R3, SEVENSEG           ; R3 = address of SEVENSEG (0x00000C18)
 		LDR R4, ARITHMETIC_AMOUNT  ; R4 = 0x1 = 0b0000_0001
 		LDR R5, OVERFLOW_AMOUNT    ; R5 = 0xFFFFFFFF
-		LDR R8, LSB_MASK           ; R8 = 0xFF (0b1111_1111)
+		LDR R8, LSB_MASK           ; R8 = 0x00FF (0b1111_1111)
 		
 main_loop
+		MOV R5, #0xFFFFFFFF    ; reset OVERFLOW_AMOUNT
 		LDR R6, [R1]		   ; R6 = DIPS, use this if manually flipping switches onboard
-		;LDR R6, DIPS_SIMUL    ; use this to simulate DIPS (0x1 = 0b0000_0000_0000_0010)
+		;LDR R6, DIPS_SIMUL    ; use this to simulate DIPS (0x2 = 0b0000_0000_0000_0010)
 		LDR R7, ZERO           ; reset result seen on SEVENSEG
 		
-		ADDS R7, R5, R6        ; R7 = R5 + R6, purposefully cause an UNSIGNED overflow (C flag set to 1)
+		ADDS R7, R5, R6        ; purposefully cause an UNSIGNED overflow (C flag set to 1)
 						       ; R7 should be 0x1 now
 							   
 		ADCS R7, R7, R4          ; R7 = R7 + R4 + C_Flag = 0x3, (C flag should be reset to 0)
 		BICS R7, R7, R8, LSR #7  ; R7 = R7 & ~(R8 >> #7) = 0x2, (C flag should be set to 1, V flag should NOT be set together with it)
 		
-        STR R7, [R3]           ; display R7 on SEVENSEG
+		MVNCSS R5, R8           ; R5 = ~R8 = 0xFF...F00 (N flag should be set to 1)
+		ADD R7, R7, R5          ; R7 should be 0xFF...F02
+		
+		LDR R5, EOR_MASK        ; R5 = 0x9
+		EOR R7, R7, R5          ; R7 should be 0xFB 
+		
+        STR R7, [R3]            ; display R7 on SEVENSEG
 
 		B main_loop
 		
@@ -71,6 +78,8 @@ OVERFLOW_AMOUNT
 		DCD 0xFFFFFFFF
 ARITHMETIC_AMOUNT
 		DCD 0x00000001
+EOR_MASK
+		DCD 0xFFFFFFF9
 DIPS_SIMUL
         DCD 0x00000002
 LSB_MASK

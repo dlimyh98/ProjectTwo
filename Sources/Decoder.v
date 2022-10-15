@@ -51,8 +51,12 @@ module Decoder(
     output reg Start = 1'b0,
     output reg [1:0] MCycleOp = 2'b00,
     output reg ALUorMCycle = 1'b0,
+    output reg isArithmeticOp = 1'b0,
     output reg isADC = 1'b0,
-    output reg isBIC = 1'b0
+    output reg isBIC = 1'b0,
+    output reg isEOC = 1'b0,
+    output reg isMOV = 1'b0,
+    output reg isMVN = 1'b0
     );
     
     wire [1:0] ALUOp;
@@ -169,8 +173,12 @@ module Decoder(
     // Output = ALUControl[1:0] and FlagW[3:0]
     always @ (ALUOp, Funct[4:0]) begin
         NoWrite = 1'b0;
+        isArithmeticOp = 1'b0;
         isADC = 1'b0;
         isBIC = 1'b0;
+        isEOC = 1'b0;
+        isMOV = 1'b0;
+        isMVN = 1'b0;
         
         case (ALUOp)
             2'b00 : begin
@@ -194,10 +202,12 @@ module Decoder(
                         // - FlagW[3:0] -> [N] [Z] [C] [V]
                         case (Funct[4:1])   // Funct[4:1] == cmd (DP) or PUBW (Memory)
                             4'b0100 : begin // ADD or ADDS (sets NZCV flags)
+                                          isArithmeticOp = 1'b1;                           
                                           ALUControl = 2'b00;
                                           FlagW = (Funct[0] == 1'b1) ? 4'b1111 : 4'b0000;
                                       end
                             4'b0010 : begin // SUB or SUBS (sets NZCV flags)
+                                          isArithmeticOp = 1'b1;
                                           ALUControl = 2'b01; 
                                           FlagW = (Funct[0] == 1'b1) ? 4'b1111 : 4'b0000;
                                       end
@@ -220,6 +230,7 @@ module Decoder(
                                           NoWrite = 1'b1;
                                       end
                             4'b0101 : begin // ADC (sets NZCV flags)
+                                          isArithmeticOp = 1'b1;
                                           ALUControl = 2'b00;
                                           FlagW = (Funct[0] == 1'b1) ? 4'b1111 : 4'b0000;
                                           isADC = 1'b1;
@@ -229,7 +240,23 @@ module Decoder(
                                           FlagW = (Funct[0] == 1'b1) ? 4'b1110 : 4'b0000;
                                           isBIC = 1'b1;
                                       end
+                            4'b0001 : begin  // EOR (sets NZC flags)
+                                          ALUControl = 2'b00;
+                                          FlagW = (Funct[0] == 1'b1) ? 4'b1110 : 4'b0000;
+                                          isEOC = 1'b1;               
+                                      end
+                            4'b1101 : begin  // MOV (sets NZC flags)
+                                          ALUControl = 2'b00;
+                                          FlagW = (Funct[0] == 1'b1) ? 4'b1110 : 4'b0000;
+                                          isMOV = 1'b1;              
+                                      end
+                            4'b1111 : begin  // MVN (sets NZC flags)
+                                          ALUControl = 2'b01;
+                                          FlagW = (Funct[0] == 1'b1) ? 4'b1110 : 4'b0000;
+                                          isMVN = 1'b1;            
+                                      end                                                                            
                             default : begin // undefined signals
+                                          isArithmeticOp = 1'b0;
                                           ALUControl = 2'b00;
                                           FlagW = 4'b0000;
                                       end

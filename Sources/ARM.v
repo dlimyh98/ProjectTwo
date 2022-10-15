@@ -83,8 +83,12 @@ module ARM(
     wire Start;
     wire [1:0] MCycleOp;
     wire ALUorMCycle;
+    wire isArithmeticOp;
     wire isADC;
     wire isBIC;
+    wire isEOC;
+    wire isMOV;
+    wire isMVN;
     
     /************ CondLogic signals ************/
     //wire CLK ;
@@ -243,8 +247,12 @@ module ARM(
                     Start,
                     MCycleOp,
                     ALUorMCycle,
+                    isArithmeticOp,
                     isADC,
-                    isBIC
+                    isBIC,
+                    isEOC,
+                    isMOV,
+                    isMVN
                 );
                                 
     // Instantiate CondLogic
@@ -279,8 +287,12 @@ module ARM(
                Src_B,
                ALUControl,
                C_Flag,
+               isArithmeticOp,
                isADC,
                isBIC,
+               isEOC,
+               isMOV,
+               isMVN,
                Shifter_carryOut,
                ALUResult,
                ALUFlags

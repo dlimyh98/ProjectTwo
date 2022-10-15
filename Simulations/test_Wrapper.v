@@ -46,10 +46,11 @@ module test_Wrapper #(
     
     // Lab 4 Stimuli
        initial begin
-           /* Testing BIC
-                - C Flag should be 1
-                - V flag should be 0 (C and V no longer set together)
-                - SEVENSEG should be 0x2
+           /* Testing EOR, MOV, MVNS
+                - MVSCSS should
+                    - successfully execute due to C flag being 1 (from BICS)
+                    - set N flag to 1
+                - SEVENSEG should be 0xFF...F02
            */
            DIP = 16'b0000_0000_0000_0010;
        end
