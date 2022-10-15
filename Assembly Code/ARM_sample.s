@@ -22,13 +22,15 @@
 		
 main_loop
 		LDR R6, [R1]		   ; R6 = DIPS, use this if manually flipping switches onboard
-		;LDR R6, DIPS_SIMUL    ; use this to simulate DIPS (0x2 = 0b0000_0000_0000_0002)
+		;LDR R6, DIPS_SIMUL    ; use this to simulate DIPS (0x1 = 0b0000_0000_0000_0010)
 		LDR R7, ZERO           ; reset result seen on SEVENSEG
 		
-		ADDS R7, R4, R5        ; R7 = R4 + R5, purposefully cause an UNSIGNED overflow (C flag set to 1)
-						       ; R7 should be 0x0 now
+		ADDS R7, R5, R6        ; R7 = R5 + R6, purposefully cause an UNSIGNED overflow (C flag set to 1)
+						       ; R7 should be 0x1 now
 							   
-		ADCS R7, R7, R4        ; R7 = R7 + R4 + C_Flag, R7 should be 0x2, (C flag should be reset to 0)
+		ADCS R7, R7, R4        ; R7 = R7 + R4 + C_Flag = 0x3, (C flag should be reset to 0)
+		BIC R7, R7, #1         ; R7 = R7 & ~0x1 = 0x2
+		
         STR R7, [R3]           ; display R7 on SEVENSEG
 
 		B main_loop

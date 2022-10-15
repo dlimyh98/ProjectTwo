@@ -4,6 +4,7 @@
 1. ADC - Add with Carry `ADCS R7, R4, R5`
       - confirmed that ADCS correctly updates Flags
 3. BIC - Logical Bit Clear
+      - Src_B_comp is updated at end of always@(...) block, NOT end of clock cycle
 4. EOR - Logical EOR
 5. MOV
 6. MVN

@@ -33,6 +33,7 @@ module ALU(
     input [1:0] ALUControl,
     input C_Flag,
     input isADC,
+    input isBIC,
     output [31:0] ALUResult,
     output [3:0] ALUFlags
     );
@@ -45,8 +46,10 @@ module ALU(
     wire N, Z, C ;
     reg V ;
     
-    assign S_wider = (isADC == 1'b0) ? Src_A_comp + Src_B_comp + C_0
-                                     : Src_A_comp + Src_B_comp + C_0 + C_Flag;
+    assign S_wider = (isADC == 1'b1) ? Src_A_comp + Src_B_comp + C_0 + C_Flag :
+                     (isBIC == 1'b1) ? Src_A_comp & Src_B_comp :
+                                       Src_A_comp + Src_B_comp + C_0;
+    
     
     always@(Src_A, Src_B, ALUControl, S_wider) begin
         // default values; help avoid latches

@@ -46,7 +46,7 @@ module test_Wrapper #(
     
     // Lab 4 Stimuli
        initial begin
-           DIP = 16'b0000_0000_0000_0001;  // ADC test, should see 0x2
+           DIP = 16'b0000_0000_0000_0010;
        end
     
     // Lab 3 Stimuli

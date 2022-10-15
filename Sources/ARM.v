@@ -84,6 +84,7 @@ module ARM(
     wire [1:0] MCycleOp;
     wire ALUorMCycle;
     wire isADC;
+    wire isBIC;
     
     /************ CondLogic signals ************/
     //wire CLK ;
@@ -241,7 +242,8 @@ module ARM(
                     Start,
                     MCycleOp,
                     ALUorMCycle,
-                    isADC
+                    isADC,
+                    isBIC
                 );
                                 
     // Instantiate CondLogic
@@ -275,6 +277,7 @@ module ARM(
                ALUControl,
                C_Flag,
                isADC,
+               isBIC,
                ALUResult,
                ALUFlags
              );                

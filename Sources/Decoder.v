@@ -51,7 +51,8 @@ module Decoder(
     output reg Start = 1'b0,
     output reg [1:0] MCycleOp = 2'b00,
     output reg ALUorMCycle = 1'b0,
-    output reg isADC = 1'b0
+    output reg isADC = 1'b0,
+    output reg isBIC = 1'b0
     );
     
     wire [1:0] ALUOp;
@@ -167,7 +168,9 @@ module Decoder(
     // Input = ALUOp, Funct[4:0] (Funt[5] is I bit)
     // Output = ALUControl[1:0] and FlagW[1:0]
     always @ (ALUOp, Funct[4:0]) begin
-        isADC = 1'b0;   // remove inferring latch problem
+        NoWrite = 1'b0;
+        isADC = 1'b0;
+        isBIC = 1'b0;
         
         case (ALUOp)
             2'b00 : begin
@@ -175,32 +178,26 @@ module Decoder(
                         // assert must be B (with signed offset)
                         ALUControl = 2'b00;
                         FlagW = 2'b00;
-                        NoWrite = 1'b0;
-                        isADC = 1'b0;
                     end
                     
             2'b01 : begin
                         // assert must be negative offset STR/LDR (with unsigned offset)
                         ALUControl = 2'b01;
                         FlagW = 2'b00;
-                        NoWrite = 1'b0;
-                        isADC = 1'b0;
                     end
                     
             2'b11 : begin
                         // assert must be DP instructions (positive/negative offset)
                         FlagW = Funct[0] ? 2'b11 : 2'b00;
-                        NoWrite = 1'b0;
-                        isADC = 1'b0;
                         
                         // - Funct[4:0] -> [cmd3] [cmd2] [cmd1] [cmd0] [S]
                         // - FlagW[1:0] -> [N&Z] [C&V]
                         case (Funct[4:1])   // Funct[4:1] == cmd (DP) or PUBW (Memory)
-                            4'b0100 : begin // ADD or ADDS (set NZCV flags)
+                            4'b0100 : begin // ADD or ADDS (sets NZCV flags)
                                           ALUControl = 2'b00;
                                           FlagW = (Funct[0] == 1'b1) ? 2'b11 : 2'b00;
                                       end
-                            4'b0010 : begin // SUB or SUBS (set NZCV flags)
+                            4'b0010 : begin // SUB or SUBS (sets NZCV flags)
                                           ALUControl = 2'b01; 
                                           FlagW = (Funct[0] == 1'b1) ? 2'b11 : 2'b00;
                                       end
@@ -212,25 +209,29 @@ module Decoder(
                                           ALUControl = 2'b11;
                                           FlagW = (Funct[0] == 1'b1) ? 2'b10 : 2'b00;
                                       end
-                            4'b1010 : begin // CMP (set NZCV flags automatically)
+                            4'b1010 : begin // CMP (sets NZCV flags automatically)
                                           ALUControl = 2'b01;
                                           FlagW = 2'b11;
                                           NoWrite = 1'b1;
                                       end
-                            4'b1011 : begin // CMN (set NZCV flags automatically)
+                            4'b1011 : begin // CMN (sets NZCV flags automatically)
                                           ALUControl = 2'b00;
                                           FlagW = 2'b11;
                                           NoWrite = 1'b1;
                                       end
-                            4'b0101 : begin // ADC (set NZCV flags)
+                            4'b0101 : begin // ADC (sets NZCV flags)
                                           ALUControl = 2'b00;
                                           FlagW = (Funct[0] == 1'b1) ? 2'b11 : 2'b00;
                                           isADC = 1'b1;
-                                      end       
+                                      end
+                            4'b1110 : begin  // BIC (sets NZCV flags)
+                                          ALUControl = 2'b01;
+                                          FlagW = (Funct[0] == 1'b1) ? 2'b11 : 2'b00;
+                                          isBIC = 1'b1;
+                                      end
                             default : begin // undefined signals
-                                ALUControl = 2'b00;
-                                FlagW = 2'b00;
-                                NoWrite = 1'b0;
+                                          ALUControl = 2'b00;
+                                          FlagW = 2'b00;
                                       end
                         endcase
                     end
