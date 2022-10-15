@@ -19,6 +19,7 @@
 		LDR R3, SEVENSEG           ; R3 = address of SEVENSEG (0x00000C18)
 		LDR R4, ARITHMETIC_AMOUNT  ; R4 = 0x1 = 0b0000_0001
 		LDR R5, OVERFLOW_AMOUNT    ; R5 = 0xFFFFFFFF
+		LDR R8, LSB_MASK           ; R8 = 0xFF (0b1111_1111)
 		
 main_loop
 		LDR R6, [R1]		   ; R6 = DIPS, use this if manually flipping switches onboard
@@ -28,9 +29,8 @@ main_loop
 		ADDS R7, R5, R6        ; R7 = R5 + R6, purposefully cause an UNSIGNED overflow (C flag set to 1)
 						       ; R7 should be 0x1 now
 							   
-		ADCS R7, R7, R4        ; R7 = R7 + R4 + C_Flag = 0x3, (C flag should be reset to 0)
-		BIC R7, R7, #1         ; R7 = R7 & ~0x1 = 0x2
-		SUB R7, R7, #1
+		ADCS R7, R7, R4          ; R7 = R7 + R4 + C_Flag = 0x3, (C flag should be reset to 0)
+		BICS R7, R7, R8, LSR #7  ; R7 = R7 & ~(R8 >> #7) = 0x2, (C flag should be set to 1, V flag should NOT be set together with it)
 		
         STR R7, [R3]           ; display R7 on SEVENSEG
 

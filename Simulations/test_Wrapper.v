@@ -46,6 +46,11 @@ module test_Wrapper #(
     
     // Lab 4 Stimuli
        initial begin
+           /* Testing BIC
+                - C Flag should be 1
+                - V flag should be 0 (C and V no longer set together)
+                - SEVENSEG should be 0x2
+           */
            DIP = 16'b0000_0000_0000_0010;
        end
     
