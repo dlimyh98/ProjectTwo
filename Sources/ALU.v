@@ -30,7 +30,7 @@
 module ALU(
     input [31:0] Src_A,
     input [31:0] Src_B,
-    input [1:0] ALUControl,
+    input [3:0] ALUControl,
     input C_Flag,
     input isArithmeticOp,
     input isADC,
@@ -73,13 +73,13 @@ module ALU(
         V <= 0 ;
     
         case(ALUControl)
-            2'b00:  
+            4'b0000:  
             begin
                 ALUResult_i <= S_wider[31:0] ;
                 V <= ( Src_A[31] ~^ Src_B[31] )  & ( Src_B[31] ^ S_wider[31] );          
             end
             
-            2'b01:  
+            4'b0001:  
             begin
                 C_0[0] <= 1 ;  
                 Src_B_comp <= {1'b0, ~ Src_B} ;
@@ -87,8 +87,8 @@ module ALU(
                 V <= ( Src_A[31] ^ Src_B[31] )  & ( Src_B[31] ~^ S_wider[31] );       
             end
             
-            2'b10: ALUResult_i <= Src_A & Src_B ;
-            2'b11: ALUResult_i <= Src_A | Src_B ;               
+            4'b0010: ALUResult_i <= Src_A & Src_B ;
+            4'b0011: ALUResult_i <= Src_A | Src_B ;               
         endcase ;
     end
     

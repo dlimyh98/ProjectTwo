@@ -46,7 +46,7 @@ module Decoder(
     output reg [1:0] ImmSrc = 2'b00,
     output reg [1:0] RegSrc = 2'b00,
     output reg NoWrite = 1'b0,
-    output reg [1:0] ALUControl = 2'b00,
+    output reg [3:0] ALUControl = 4'b0000,
     output reg [3:0] FlagW = 4'b0000,
     output reg Start = 1'b0,
     output reg [1:0] MCycleOp = 2'b00,
@@ -170,7 +170,7 @@ module Decoder(
     
     // ALU Decoder Logic
     // Input = ALUOp, Funct[4:0] (Funt[5] is I bit)
-    // Output = ALUControl[1:0] and FlagW[3:0]
+    // Output = ALUControl[3:0] and FlagW[3:0]
     always @ (ALUOp, Funct[4:0]) begin
         NoWrite = 1'b0;
         isArithmeticOp = 1'b0;
@@ -184,13 +184,13 @@ module Decoder(
             2'b00 : begin
                         // assert must be positive offset STR/LDR (with unsigned offset)
                         // assert must be B (with signed offset)
-                        ALUControl = 2'b00;
+                        ALUControl = 4'b0000;
                         FlagW = 4'b0000;
                     end
                     
             2'b01 : begin
                         // assert must be negative offset STR/LDR (with unsigned offset)
-                        ALUControl = 2'b01;
+                        ALUControl = 4'b0001;
                         FlagW = 4'b0000;
                     end
                     
@@ -203,61 +203,65 @@ module Decoder(
                         case (Funct[4:1])   // Funct[4:1] == cmd (DP) or PUBW (Memory)
                             4'b0100 : begin // ADD or ADDS (sets NZCV flags)
                                           isArithmeticOp = 1'b1;                           
-                                          ALUControl = 2'b00;
+                                          ALUControl = 4'b0000;
                                           FlagW = (Funct[0] == 1'b1) ? 4'b1111 : 4'b0000;
                                       end
                             4'b0010 : begin // SUB or SUBS (sets NZCV flags)
                                           isArithmeticOp = 1'b1;
-                                          ALUControl = 2'b01; 
+                                          ALUControl = 4'b0001; 
                                           FlagW = (Funct[0] == 1'b1) ? 4'b1111 : 4'b0000;
                                       end
                             4'b0000 : begin // AND or ANDS (for now doesn't affect C flag)
-                                          ALUControl = 2'b10;
+                                          ALUControl = 4'b0010;
                                           FlagW = (Funct[0] == 1'b1) ? 4'b1100 : 4'b0000;
                                       end              
                             4'b1100 : begin // ORR or ORRS (for now doesn't affect C flag)
-                                          ALUControl = 2'b11;
+                                          ALUControl = 4'b0011;
                                           FlagW = (Funct[0] == 1'b1) ? 4'b1100 : 4'b0000;
                                       end
                             4'b1010 : begin // CMP (sets NZCV flags)
-                                          ALUControl = 2'b01;
+                                          ALUControl = 4'b0001;
                                           FlagW = 4'b1111;
                                           NoWrite = 1'b1;
                                       end
                             4'b1011 : begin // CMN (sets NZCV flags)
-                                          ALUControl = 2'b00;
+                                          ALUControl = 4'b0000;
                                           FlagW = 4'b1111;
                                           NoWrite = 1'b1;
                                       end
                             4'b0101 : begin // ADC (sets NZCV flags)
                                           isArithmeticOp = 1'b1;
-                                          ALUControl = 2'b00;
+                                          ALUControl = 4'b0000;
                                           FlagW = (Funct[0] == 1'b1) ? 4'b1111 : 4'b0000;
                                           isADC = 1'b1;
                                       end
                             4'b1110 : begin // BIC (sets NZC flags)
-                                          ALUControl = 2'b01;
+                                          ALUControl = 4'b0001;
                                           FlagW = (Funct[0] == 1'b1) ? 4'b1110 : 4'b0000;
                                           isBIC = 1'b1;
                                       end
                             4'b0001 : begin  // EOR (sets NZC flags)
-                                          ALUControl = 2'b00;
+                                          ALUControl = 4'b0000;
                                           FlagW = (Funct[0] == 1'b1) ? 4'b1110 : 4'b0000;
                                           isEOC = 1'b1;               
                                       end
                             4'b1101 : begin  // MOV (sets NZC flags)
-                                          ALUControl = 2'b00;
+                                          ALUControl = 4'b0000;
                                           FlagW = (Funct[0] == 1'b1) ? 4'b1110 : 4'b0000;
                                           isMOV = 1'b1;              
                                       end
                             4'b1111 : begin  // MVN (sets NZC flags)
-                                          ALUControl = 2'b01;
+                                          ALUControl = 4'b0001;
                                           FlagW = (Funct[0] == 1'b1) ? 4'b1110 : 4'b0000;
                                           isMVN = 1'b1;            
-                                      end                                                                            
+                                      end
+                            4'b0011 : begin  // RSB (sets NZCV flags)
+                                          ALUControl = 4'b0011;
+                                            
+                                      end                                                                                      
                             default : begin // undefined signals
                                           isArithmeticOp = 1'b0;
-                                          ALUControl = 2'b00;
+                                          ALUControl = 4'b0000;
                                           FlagW = 4'b0000;
                                       end
                         endcase
@@ -265,7 +269,7 @@ module Decoder(
                     
             2'b10 : begin
                         // assert undefined
-                        {ALUControl, NoWrite} = 2'b00;
+                        {ALUControl, NoWrite} = 5'b00000;
                         FlagW = 4'b0000;
                     end
         endcase            
