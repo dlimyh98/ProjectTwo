@@ -114,7 +114,7 @@ module ARM(
     /************ ALU signals ************/
     wire [31:0] Src_A ;
     wire [31:0] Src_B ;
-    wire [1:0] ALUControl ;
+    wire [3:0] ALUControl ;
    // wire [31:0] ALUResult ;
     wire [3:0] ALUFlags ;
     

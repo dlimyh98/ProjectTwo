@@ -256,9 +256,17 @@ module Decoder(
                                           isMVN = 1'b1;            
                                       end
                             4'b0011 : begin  // RSB (sets NZCV flags)
-                                          ALUControl = 4'b0011;
-                                            
-                                      end                                                                                      
+                                          ALUControl = 4'b0100;
+                                          FlagW = (Funct[0] == 1'b1) ? 4'b1111 : 4'b0000;                        
+                                      end
+                            4'b0111: begin  // RSC (sets NZCV flags)
+                                          ALUControl = 4'b0101;
+                                          FlagW = (Funct[0] == 1'b1) ? 4'b1111 : 4'b0000;  
+                                     end
+                            4'b0110: begin  // SBC (sets NZCV flags)
+                                          ALUControl = 4'b0110;
+                                          FlagW = (Funct[0] == 1'b1) ? 4'b1111 : 4'b0000; 
+                                     end                                                                                      
                             default : begin // undefined signals
                                           isArithmeticOp = 1'b0;
                                           ALUControl = 4'b0000;
