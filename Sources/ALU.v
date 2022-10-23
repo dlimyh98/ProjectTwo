@@ -90,14 +90,9 @@ module ALU(
             4'b0100:   // for TEQ, EOR
                 ALUResult_i <= Src_A ^ Src_B ;
                         
-            4'b0101: begin    // for RSB, RSC: B - A = B + A' + 1
+            4'b0101: begin    // for RSB: B - A = B + A' + 1
                 C_0[0] <= 1 ;  
                 Src_A_comp <= {1'b0, ~ Src_A} ;
-                // subtracting one more than usual if C_Flag == 0. 
-                // which also means B - A = B + A' + 1 - 1 = B + A'
-                if (~C_Flag) begin  
-                    C_0[0] <= 0;
-                end
                 ALUResult_i <= S_wider[31:0] ;
                 V <= ( Src_A[31] ^ Src_B[31] )  & ( Src_B[31] ~^ S_wider[31] );
             end
@@ -121,6 +116,17 @@ module ALU(
                 end
                 ALUResult_i <= S_wider[31:0] ;
                 V <= ( Src_A[31] ^ Src_B[31] )  & ( Src_B[31] ~^ S_wider[31] );       
+            end
+            4'b1010: begin    // for RSC: B - A = B + A' + 1
+                C_0[0] <= 1 ;  
+                Src_A_comp <= {1'b0, ~ Src_A} ;
+                // subtracting one more than usual if C_Flag == 0. 
+                // which also means B - A = B + A' + 1 - 1 = B + A'
+                if (~C_Flag) begin  
+                    C_0[0] <= 0;
+                end
+                ALUResult_i <= S_wider[31:0] ;
+                V <= ( Src_A[31] ^ Src_B[31] )  & ( Src_B[31] ~^ S_wider[31] );
             end
         endcase ;
     end
