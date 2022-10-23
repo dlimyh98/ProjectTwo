@@ -69,7 +69,7 @@ module ALU(
     
     // Below sets the Src_A_comp, Src_B_comp, C_0, C_Flag, ALUResult_i to be assigned
     //
-    always@(Src_A, Src_B, ALUControl, S_wider) begin
+    always@(Src_A, Src_B, ALUControl, S_wider, C_Flag) begin
         // default values; help avoid latches
         C_0 <= 0 ;
         Src_A_comp <= {1'b0, Src_A} ;
