@@ -255,7 +255,7 @@ module Decoder(
                                      end
                             4'b0110: begin  // SBC (sets NZCV flags)
                                           isArithmeticOp = 1'b1;
-                                          ALUControl = 4'b0001;
+                                          ALUControl = 4'b1001;
                                           FlagW = (Funct[0] == 1'b1) ? 4'b1111 : 4'b0000; 
                                      end
                             4'b1001: begin  // TEQ (does EOR and sets NZC flags) 
