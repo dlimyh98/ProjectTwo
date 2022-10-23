@@ -7,11 +7,11 @@
 3. EOR - Logical EOR `EOR R7, R7, R5`
 4. MOV - Move `MOV R5, #0xFFFFFFFF`
 5. MVN - Move Not `MVNCSS R5, R8`
-6. RSB
-7. RSC
-8. SBC
-9. TEQ
-10. TST
+6. RSB - Reverse Subtract `R7, R7, #0x000000FF`
+7. RSC - Reverse Subtract w/ Carry `R7, R7, #0x000000FF`
+8. SBC - Subtract w/ Carry `R7, R5, R7`
+9. TEQ - Test Equivalence `R7, #00000004`
+10. TST - Test (same as ANDS) `R5, R7`
 
 ### POTENTIAL IMPROVEMENTS ###
 1. Pipelining

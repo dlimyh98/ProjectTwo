@@ -106,10 +106,16 @@ initial begin
 			INSTR_MEM[13] = 32'hE0877005; 
 			INSTR_MEM[14] = 32'hE59F51E8; 
 			INSTR_MEM[15] = 32'hE0277005; 
-			INSTR_MEM[16] = 32'hE5837000; 
-			INSTR_MEM[17] = 32'hEAFFFFF3; 
-			INSTR_MEM[18] = 32'hEAFFFFFE; 
-			for(i = 19; i < 128; i = i+1) begin 
+			INSTR_MEM[16] = 32'hE26770FF; 
+			INSTR_MEM[17] = 32'hE3370004; 
+			INSTR_MEM[18] = 32'hE2E770FF; 
+			INSTR_MEM[19] = 32'hE2957001; 
+			INSTR_MEM[20] = 32'hE1150007; 
+			INSTR_MEM[21] = 32'hE0C57007; 
+			INSTR_MEM[22] = 32'hE5837000; 
+			INSTR_MEM[23] = 32'hEAFFFFED; 
+			INSTR_MEM[24] = 32'hEAFFFFFE; 
+			for(i = 25; i < 128; i = i+1) begin 
 				INSTR_MEM[i] = 32'h0; 
 			end
 end

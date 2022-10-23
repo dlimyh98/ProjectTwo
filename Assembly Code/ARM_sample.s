@@ -37,8 +37,19 @@ main_loop
 		ADD R7, R7, R5          ; R7 should be 0xFF...F02
 		
 		LDR R5, EOR_MASK        ; R5 = 0x9
-		EOR R7, R7, R5          ; R7 should be 0xFB 
+		EOR R7, R7, R5          ; R7 should be 0xFB
+
+		RSB R7, R7, #0x000000FF ; R7 = 0xFF - 0xFB = 0x04
+		TEQ R7, #00000004		; sets C flag to 0
+		RSC R7, R7, #0x000000FF ; R7 = 0xFF - 0x04 - 1 = 0xFA		(Since C_flag is 0, -1)
 		
+		ADDS R7, R5, #00000001  ; R7 = 0x0 (C_flag to 1)
+		
+		TST R5, R7				; R5 & R7. To ensure that C_flag is 0
+		SBC R7, R5, R7			; R7 = 0xFFFFFFFF - 0x0 - 0x01 = 0xFFFFFFFE (Since C_flag is 0, -1)
+		
+
+
         STR R7, [R3]            ; display R7 on SEVENSEG
 
 		B main_loop
