@@ -52,11 +52,7 @@ module Decoder(
     output reg [1:0] MCycleOp = 2'b00,
     output reg ALUorMCycle = 1'b0,
     output reg isArithmeticOp = 1'b0,
-    output reg isADC = 1'b0,
-    output reg isBIC = 1'b0,
-    output reg isEOC = 1'b0,
-    output reg isMOV = 1'b0,
-    output reg isMVN = 1'b0
+    output reg isADC = 1'b0
     );
     
     wire [1:0] ALUOp;
@@ -175,10 +171,6 @@ module Decoder(
         NoWrite = 1'b0;
         isArithmeticOp = 1'b0;
         isADC = 1'b0;
-        isBIC = 1'b0;
-        isEOC = 1'b0;
-        isMOV = 1'b0;
-        isMVN = 1'b0;
         
         case (ALUOp)
             2'b00 : begin
@@ -211,11 +203,11 @@ module Decoder(
                                           ALUControl = 4'b0001; 
                                           FlagW = (Funct[0] == 1'b1) ? 4'b1111 : 4'b0000;
                                       end
-                            4'b0000 : begin // AND or ANDS (for now doesn't affect C flag)
+                            4'b0000 : begin // AND or ANDS (affects C flags now)
                                           ALUControl = 4'b0010;
                                           FlagW = (Funct[0] == 1'b1) ? 4'b1100 : 4'b0000;
                                       end              
-                            4'b1100 : begin // ORR or ORRS (for now doesn't affect C flag)
+                            4'b1100 : begin // ORR or ORRS (affects C flags now)
                                           ALUControl = 4'b0011;
                                           FlagW = (Funct[0] == 1'b1) ? 4'b1100 : 4'b0000;
                                       end
@@ -231,29 +223,25 @@ module Decoder(
                                       end
                             4'b0101 : begin // ADC (sets NZCV flags)
                                           isArithmeticOp = 1'b1;
+                                          isADC = 1'b1;
                                           ALUControl = 4'b0000;
                                           FlagW = (Funct[0] == 1'b1) ? 4'b1111 : 4'b0000;
-                                          isADC = 1'b1;
                                       end
                             4'b1110 : begin // BIC (sets NZC flags)
-                                          ALUControl = 4'b0001;
+                                          ALUControl = 4'b0110;
                                           FlagW = (Funct[0] == 1'b1) ? 4'b1110 : 4'b0000;
-                                          isBIC = 1'b1;
                                       end
                             4'b0001 : begin  // EOR (sets NZC flags)
-                                          ALUControl = 4'b0000;
-                                          FlagW = (Funct[0] == 1'b1) ? 4'b1110 : 4'b0000;
-                                          isEOC = 1'b1;               
+                                          ALUControl = 4'b0100;
+                                          FlagW = (Funct[0] == 1'b1) ? 4'b1110 : 4'b0000;               
                                       end
                             4'b1101 : begin  // MOV (sets NZC flags)
-                                          ALUControl = 4'b0000;
-                                          FlagW = (Funct[0] == 1'b1) ? 4'b1110 : 4'b0000;
-                                          isMOV = 1'b1;              
+                                          ALUControl = 4'b0111;
+                                          FlagW = (Funct[0] == 1'b1) ? 4'b1110 : 4'b0000;             
                                       end
                             4'b1111 : begin  // MVN (sets NZC flags)
-                                          ALUControl = 4'b0001;
-                                          FlagW = (Funct[0] == 1'b1) ? 4'b1110 : 4'b0000;
-                                          isMVN = 1'b1;            
+                                          ALUControl = 4'b1000;
+                                          FlagW = (Funct[0] == 1'b1) ? 4'b1110 : 4'b0000;           
                                       end
                             4'b0011 : begin  // RSB (sets NZCV flags)
                                           ALUControl = 4'b0101;

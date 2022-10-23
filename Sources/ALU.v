@@ -34,10 +34,6 @@ module ALU(
     input C_Flag,
     input isArithmeticOp,
     input isADC,
-    input isBIC,
-    input isEOC,
-    input isMOV,
-    input isMVN,
     input Shifter_carryOut,
     output [31:0] ALUResult,
     output [3:0] ALUFlags
@@ -51,25 +47,16 @@ module ALU(
     wire N, Z, C ;
     reg V ;
     
-    assign S_wider = (isADC == 1'b1) ? Src_A_comp + Src_B_comp + C_0 + C_Flag :
-                     (isBIC == 1'b1) ? Src_A_comp & Src_B_comp :
-                     (isEOC == 1'b1) ? Src_A ^ Src_B :
-                     (isMOV == 1'b1 || isMVN == 1'b1) ? Src_B_comp :
-                      Src_A_comp + Src_B_comp + C_0;
-    
-    // assign S_wider = Src_A_comp + Src_B_comp + C_0;  // can restore this back and update its components 
-                                                        // based on C_Flag.
-    
     assign N = ALUResult_i[31] ;
     assign Z = (ALUResult_i == 0) ? 1 : 0 ;
     assign C = (isArithmeticOp == 1'b1) ? S_wider[32] : Shifter_carryOut;
     assign ALUResult = ALUResult_i ;
-    assign ALUFlags = {N, Z, C, V} ;                                    
+    assign ALUFlags = {N, Z, C, V} ;  
     
+    assign S_wider = Src_A_comp + Src_B_comp + C_0;                           
     
     // Below sets the Src_A_comp, Src_B_comp, C_0, C_Flag, ALUResult_i to be assigned
-    //
-    always@(Src_A, Src_B, ALUControl, S_wider, C_Flag) begin
+    always@(Src_A, Src_B, ALUControl, S_wider, C_Flag, isADC) begin
         // default values; help avoid latches
         C_0 <= 0 ;
         Src_A_comp <= {1'b0, Src_A} ;
@@ -78,18 +65,16 @@ module ALU(
         V <= 0 ;
     
         case(ALUControl)
-            4'b0000:    // for ADD, ADDS
-            begin
+            4'b0000: begin    // for ADD, ADDS, ADC
                 ALUResult_i <= S_wider[31:0] ;
-                // adding one more than usual if C_Flag == 1.
-                if (C_Flag) begin  
+                // only if ADC instruction, then consider C_Flag
+                if (isADC && C_Flag) begin  
                     C_0[0] <= 1;
                 end
                 V <= ( Src_A[31] ~^ Src_B[31] )  & ( Src_B[31] ^ S_wider[31] );          
             end
             
-            4'b0001:    // for SUB, SUBS, SBC: A - B = A + B' + 1
-            begin
+            4'b0001: begin    // for SUB, SUBS, SBC: A - B = A + B' + 1
                 C_0[0] <= 1 ;  
                 Src_B_comp <= {1'b0, ~ Src_B} ;
                 // subtracting one more than usual if C_Flag == 0. 
@@ -103,12 +88,14 @@ module ALU(
             
             4'b0010:    // for TST
                 ALUResult_i <= Src_A & Src_B ;
-            4'b0011: 
+                
+            4'b0011:   // for ORR
                 ALUResult_i <= Src_A | Src_B ;
-            4'b0100:    // for TEQ, EOR(?)
-                ALUResult_i <= Src_A ^ Src_B ;              
-            4'b0101:    // for RSB, RSC: B - A = B + A' + 1
-            begin
+                
+            4'b0100:   // for TEQ, EOR
+                ALUResult_i <= Src_A ^ Src_B ;
+                        
+            4'b0101: begin    // for RSB, RSC: B - A = B + A' + 1
                 C_0[0] <= 1 ;  
                 Src_A_comp <= {1'b0, ~ Src_A} ;
                 // subtracting one more than usual if C_Flag == 0. 
@@ -118,9 +105,17 @@ module ALU(
                 end
                 ALUResult_i <= S_wider[31:0] ;
                 V <= ( Src_A[31] ^ Src_B[31] )  & ( Src_B[31] ~^ S_wider[31] );
-            end           
-                
-                                
+            end
+            
+            4'b0110:    // BIC : A & ~B
+                ALUResult_i <= Src_A & ~Src_B;
+            
+            4'b0111:    // MOV
+                ALUResult_i <= Src_B;
+            
+            4'b1000:    // MVN
+                ALUResult_i <= ~Src_B;
+        
         endcase ;
     end
     
