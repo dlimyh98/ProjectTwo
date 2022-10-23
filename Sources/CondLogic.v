@@ -36,7 +36,7 @@ module CondLogic(
     input CLK,
     input PCS,
     input RegW,
-    input NoWrite, // for CMP
+    input NoWrite, // for CMP, CMN, TEQ, TST
     input MemW,
     input [3:0] FlagW,
     input [3:0] Cond,
