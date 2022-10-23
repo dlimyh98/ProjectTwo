@@ -74,14 +74,9 @@ module ALU(
                 V <= ( Src_A[31] ~^ Src_B[31] )  & ( Src_B[31] ^ S_wider[31] );          
             end
             
-            4'b0001: begin    // for SUB, SUBS, SBC: A - B = A + B' + 1
+            4'b0001: begin    // for SUB, SUBS: A - B = A + B' + 1
                 C_0[0] <= 1 ;  
                 Src_B_comp <= {1'b0, ~ Src_B} ;
-                // subtracting one more than usual if C_Flag == 0. 
-                // which also means A - B = A + B' + 1 - 1 = A + B'
-                if (~C_Flag) begin  
-                    C_0[0] <= 0;
-                end
                 ALUResult_i <= S_wider[31:0] ;
                 V <= ( Src_A[31] ^ Src_B[31] )  & ( Src_B[31] ~^ S_wider[31] );       
             end
@@ -115,7 +110,18 @@ module ALU(
             
             4'b1000:    // MVN
                 ALUResult_i <= ~Src_B;
-        
+                
+            4'b1001: begin    // for SBC: A - B - C = A + B' + 1 - C
+                C_0[0] <= 1 ;  
+                Src_B_comp <= {1'b0, ~ Src_B} ;
+                // subtracting one more than usual if C_Flag == 0. 
+                // which also means A - B = A + B' + 1 - 1 = A + B'
+                if (~C_Flag) begin  
+                    C_0[0] <= 0;
+                end
+                ALUResult_i <= S_wider[31:0] ;
+                V <= ( Src_A[31] ^ Src_B[31] )  & ( Src_B[31] ~^ S_wider[31] );       
+            end
         endcase ;
     end
     

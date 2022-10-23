@@ -244,14 +244,17 @@ module Decoder(
                                           FlagW = (Funct[0] == 1'b1) ? 4'b1110 : 4'b0000;           
                                       end
                             4'b0011 : begin  // RSB (sets NZCV flags)
+                                          isArithmeticOp = 1'b1;
                                           ALUControl = 4'b0101;
                                           FlagW = (Funct[0] == 1'b1) ? 4'b1111 : 4'b0000;                        
                                       end
                             4'b0111: begin  // RSC (sets NZCV flags)
+                                          isArithmeticOp = 1'b1;
                                           ALUControl = 4'b0101;
                                           FlagW = (Funct[0] == 1'b1) ? 4'b1111 : 4'b0000;  
                                      end
                             4'b0110: begin  // SBC (sets NZCV flags)
+                                          isArithmeticOp = 1'b1;
                                           ALUControl = 4'b0001;
                                           FlagW = (Funct[0] == 1'b1) ? 4'b1111 : 4'b0000; 
                                      end
