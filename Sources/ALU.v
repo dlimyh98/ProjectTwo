@@ -57,7 +57,8 @@ module ALU(
                      (isMOV == 1'b1 || isMVN == 1'b1) ? Src_B_comp :
                       Src_A_comp + Src_B_comp + C_0;
     
-    // RSB, RSC, SBC uses Src_A_comp + Src_B_comp + C_0
+    // assign S_wider = Src_A_comp + Src_B_comp + C_0;  // can restore this back and update its components 
+                                                        // based on C_Flag.
     
     assign N = ALUResult_i[31] ;
     assign Z = (ALUResult_i == 0) ? 1 : 0 ;
@@ -66,9 +67,11 @@ module ALU(
     assign ALUFlags = {N, Z, C, V} ;                                    
     
     
+    // Below sets the Src_A_comp, Src_B_comp, C_0, C_Flag, ALUResult_i to be assigned
+    //
     always@(Src_A, Src_B, ALUControl, S_wider) begin
         // default values; help avoid latches
-        C_0 <= 0 ; 
+        C_0 <= 0 ;
         Src_A_comp <= {1'b0, Src_A} ;
         Src_B_comp <= {1'b0, Src_B} ;
         ALUResult_i <= Src_B ;
@@ -78,50 +81,45 @@ module ALU(
             4'b0000:    // for ADD, ADDS
             begin
                 ALUResult_i <= S_wider[31:0] ;
+                // adding one more than usual if C_Flag == 1.
+                if (C_Flag) begin  
+                    C_0[0] <= 1;
+                end
                 V <= ( Src_A[31] ~^ Src_B[31] )  & ( Src_B[31] ^ S_wider[31] );          
             end
             
-            4'b0001:    // for SUB, SUBS 
+            4'b0001:    // for SUB, SUBS, SBC: A - B = A + B' + 1
             begin
                 C_0[0] <= 1 ;  
                 Src_B_comp <= {1'b0, ~ Src_B} ;
+                // subtracting one more than usual if C_Flag == 0. 
+                // which also means A - B = A + B' + 1 - 1 = A + B'
+                if (~C_Flag) begin  
+                    C_0[0] <= 0;
+                end
                 ALUResult_i <= S_wider[31:0] ;
                 V <= ( Src_A[31] ^ Src_B[31] )  & ( Src_B[31] ~^ S_wider[31] );       
             end
             
-            4'b0010: 
+            4'b0010:    // for TST
                 ALUResult_i <= Src_A & Src_B ;
             4'b0011: 
                 ALUResult_i <= Src_A | Src_B ;
-            4'b0100:    // for RSB: B-A = B + A' + 1
+            4'b0100:    // for TEQ, EOR(?)
+                ALUResult_i <= Src_A ^ Src_B ;              
+            4'b0101:    // for RSB, RSC: B - A = B + A' + 1
             begin
                 C_0[0] <= 1 ;  
                 Src_A_comp <= {1'b0, ~ Src_A} ;
+                // subtracting one more than usual if C_Flag == 0. 
+                // which also means B - A = B + A' + 1 - 1 = B + A'
+                if (~C_Flag) begin  
+                    C_0[0] <= 0;
+                end
                 ALUResult_i <= S_wider[31:0] ;
                 V <= ( Src_A[31] ^ Src_B[31] )  & ( Src_B[31] ~^ S_wider[31] );
-            end
-            4'b0101:    // for RSC 
-            begin
-                C_0[0] <= 1 ;
-                Src_A_comp <= {1'b0, ~ Src_A} ;
-                if (~C_Flag) begin  // subtracting one more than usual if C_Flag == 0.
-                    ALUResult_i <= S_wider[31:0] + ~{32'd0};
-                end else begin
-                    ALUResult_i <= S_wider[31:0];
-                end
-                V <= ( Src_A[31] ^ Src_B[31] )  & ( Src_B[31] ~^ S_wider[31] );
-            end 
-            4'b0110:    // for SBC
-            begin
-                C_0[0] <= 1 ;
-                Src_B_comp <= {1'b0, ~ Src_B} ;
-                if (~C_Flag) begin  // subtracting one more than usual if C_Flag == 0.
-                    ALUResult_i <= S_wider[31:0] + ~{32'd0};
-                end else begin
-                    ALUResult_i <= S_wider[31:0];
-                end
-                V <= ( Src_A[31] ^ Src_B[31] )  & ( Src_B[31] ~^ S_wider[31] );
-            end
+            end           
+                
                                 
         endcase ;
     end

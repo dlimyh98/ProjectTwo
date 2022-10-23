@@ -256,7 +256,7 @@ module Decoder(
                                           isMVN = 1'b1;            
                                       end
                             4'b0011 : begin  // RSB (sets NZCV flags)
-                                          ALUControl = 4'b0100;
+                                          ALUControl = 4'b0101;
                                           FlagW = (Funct[0] == 1'b1) ? 4'b1111 : 4'b0000;                        
                                       end
                             4'b0111: begin  // RSC (sets NZCV flags)
@@ -264,9 +264,18 @@ module Decoder(
                                           FlagW = (Funct[0] == 1'b1) ? 4'b1111 : 4'b0000;  
                                      end
                             4'b0110: begin  // SBC (sets NZCV flags)
-                                          ALUControl = 4'b0110;
+                                          ALUControl = 4'b0001;
                                           FlagW = (Funct[0] == 1'b1) ? 4'b1111 : 4'b0000; 
-                                     end                                                                                      
+                                     end
+                            4'b1001: begin  // TEQ (does EOR and sets NZC flags) 
+                                          ALUControl = 4'b0100;
+                                          FlagW = (Funct[0] == 1'b1) ? 4'b1110 : 4'b0000;
+                                     end
+                            4'b1000: begin  // TST (does logical AND and sets NZC flags)
+                                          ALUControl = 4'b0010;
+                                          FlagW = (Funct[0] == 1'b1) ? 4'b1110 : 4'b0000;
+                                     end 
+                                                                                                                           
                             default : begin // undefined signals
                                           isArithmeticOp = 1'b0;
                                           ALUControl = 4'b0000;
