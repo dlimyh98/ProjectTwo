@@ -41,11 +41,11 @@ module ARM(
     input RESET,
     //input Interrupt,             // for optional future use
     input [31:0] Instr_ARM,
-    input [31:0] ReadData_ARM,
-    output MemWrite_ARM,           // connected to MemWrite_M (propagated from CondLogic)
-    output [31:0] PC_ARM,          // connected to PC from ProgramCounter
-    output [31:0] ALUResult_ARM,   // connected to ALUResult_E from ALU
-    output [31:0] WriteData_ARM    // connected to RD2_D from Decoder
+    input [31:0] ReadData_ARM,     // equivalent to ReadData_M
+    output MemWrite_ARM,           // connected to MemWrite_M (from CondLogic)
+    output [31:0] PC_F,
+    output [31:0] ALUResult_ARM,   // connected to ALUResult_M from ALU
+    output [31:0] WriteData_ARM    // connected to RD2_M, propagated from Register File
     );
     
     /******************************** RegFile signals ********************************/
@@ -74,6 +74,7 @@ module ARM(
     
     reg [31:0] RD1_E = 32'b0;     // input for ALU / MCycle
     reg [31:0] RD2_E = 32'b0;     // input for ALU / MCycle
+    reg [31:0] RD2_M = 32'b0;     // WriteData for Data Memory
     
     reg [3:0] Cond_E = 4'b0;     // input for CondLogic
     
@@ -177,20 +178,19 @@ module ARM(
     //wire isArithmeticOp;       , directly connected from E register (propagated from Decoder) to ALU
     //wire isADC;                , directly connected from E register (propagated from Decoder) to ALU
     //wire shifter_carryOut;     , directly connected from Shifter to ALU
-    wire [31:0] ALUResult_E;     // ALUResult_ARM comes from here
+    wire [31:0] ALUResult_E;
     wire [3:0] ALUFlags_E;       // connect from ALU to CondLogic
     
     // Propagate to later stages
     reg [31:0] ALUResult_M = 32'b0;    // used for Data Forwarding (M->E) 
     reg [31:0] ALUResult_W = 32'b0;    // used for potential ResultW, which can then be used for Data Forwarding (W->E)
     
-    
     /************ ProgramCounter signals ************/
     //wire CLK;
     //wire RESET;
     wire WE_PC_F;    
     wire [31:0] PC_IN;
-    //wire [31:0] PC_F;       , use PC_ARM instead
+    //wire [31:0] PC_F;
      
      
     /************ MCycle (Multiplication/Division) signals ************/
@@ -206,6 +206,20 @@ module ARM(
     
     
     /************ Other internal signals ************/
+    wire [31:0] PCPlus4_F;
+    wire [31:0] PCPlus8_D;
+    wire [31:0] Result_W;
+                    
+    reg [31:0] Instr_D = 32'b0;
+    always @(posedge CLK) begin
+        if (RESET) begin
+            Instr_D <= 32'b0;
+        end else begin
+            Instr_D <= Instr_ARM;
+        end
+    end
+    
+    
     reg [31:0] ReadData_W = 32'b0;
     always @(posedge CLK) begin
         if (RESET) begin
@@ -215,34 +229,31 @@ module ARM(
         end
     end
     
-    wire [31:0] PCPlus4_F;
-    wire [31:0] PCPlus8_D;
-    wire [31:0] Result_W;
-    assign PCPlus4_F = PC_ARM + 4;
-    assign PCPlus8_D = PCPlus4_F + 4;
-    assign Result_W = (MemtoReg_W == 1'b1) ? ReadData_W :    // LDR instruction
-                    (ALUorMCycle_W == 1'b1) ? Result1_W :    // MCycle instructions
-                    ALUResult_W;                             // DP and Branch instructions
+    assign PCPlus4_F = PC_F + 4;
+    assign PCPlus8_D = PCPlus4_F;
+    assign Result_W = (MemtoReg_W == 1'b1) ? ReadData_W :   // LDR instruction
+                    (ALUorMCycle_W == 1'b1) ? Result1_W :   // MCycle instructions
+                    ALUResult_W;                            // DP and Branch instructions
     
     
     /************************************************ Implement datapath connections ************************************************/
     assign WE_PC_F = ~Busy_E ; // Control for multi-cycle operations (Multiplication, Division) and/or Pipelining with hazard hardware.
     assign MemWrite_ARM = MemWrite_M;
-    assign ALUResult_ARM = ALUResult_E;
-    assign WriteData_ARM = RD2_D;
+    assign ALUResult_ARM = ALUResult_M;
+    assign WriteData_ARM = RD2_M;
     
     ///////////////////////////////////////////// RegFile connections /////////////////////////////////////////////
-    assign RA1_D = (RegSrc_D[0] == 1'b1) ? 4'd15 :        // Branch instructions
-                 (Start_D == 1'b1) ? Instr_ARM[11:8] :    // UMUL, UDIV instructions
-                 Instr_ARM[19:16];                        // DP, Memory instructions
+    assign RA1_D = (RegSrc_D[0] == 1'b1) ? 4'd15 :      // Branch instructions
+                 (Start_D == 1'b1) ? Instr_D[11:8] :    // UMUL, UDIV instructions
+                 Instr_D[19:16];                        // DP, Memory instructions
                 
-    assign RA2_D = (RegSrc_D[1] == 1'b0) ? Instr_ARM[3:0] : Instr_ARM[15:12];
-    assign WA3_D = (Start_D == 1'b1) ? Instr_ARM[19:16] : Instr_ARM[15:12];
+    assign RA2_D = (RegSrc_D[1] == 1'b0) ? Instr_D[3:0] : Instr_D[15:12];
+    assign WA3_D = (Start_D == 1'b1) ? Instr_D[19:16] : Instr_D[15:12];
      // RD1_D and RD2_D computed inside RegFile
     
-    assign Cond_D = Instr_ARM[31:28];
-    assign Sh_D = Instr_ARM[6:5];
-    assign Shamt5_D = Instr_ARM[11:7];
+    assign Cond_D = Instr_D[31:28];
+    assign Sh_D = Instr_D[6:5];
+    assign Shamt5_D = Instr_D[11:7];
     assign ShIn_D = RD2_D;
     
     // RA1_E and RA2_E used as Hazard Hardware
@@ -274,9 +285,11 @@ module ARM(
         if (RESET) begin
             RD1_E <= 32'b0;
             RD2_E <= 32'b0;
+            RD2_M <= RD2_E;
         end else begin
             RD1_E <= RD1_D;
             RD2_E <= RD2_D;
+            RD2_M <= RD2_E;
         end
     end
     
@@ -303,11 +316,11 @@ module ARM(
     end
          
     ///////////////////////////////////////////// Decoder connections /////////////////////////////////////////////
-    assign Rd_D = (Start_D == 1'b1) ? Instr_ARM[19:16] : Instr_ARM[15:12];
-    assign Op_D = Instr_ARM[27:26];
-    assign Funct_D = Instr_ARM[25:20];
-    assign isMULorDIV_D = Instr_ARM[7:4];
-    assign isDIV_D = Instr_ARM[15:12];
+    assign Rd_D = (Start_D == 1'b1) ? Instr_D[19:16] : Instr_D[15:12];
+    assign Op_D = Instr_D[27:26];
+    assign Funct_D = Instr_D[25:20];
+    assign isMULorDIV_D = Instr_D[7:4];
+    assign isDIV_D = Instr_D[15:12];
     
     
     // PCS, RegW, MemW, NoWrite, FlagW propagates from Decoder to CondLogic
@@ -413,7 +426,7 @@ module ARM(
          
          
     ///////////////////////////////////////////// ExtendModule connections /////////////////////////////////////////////
-    assign InstrImm_D = Instr_ARM[23:0];
+    assign InstrImm_D = Instr_D[23:0];
     
     // ExtImm propagates from ExtendModule to ALU
     always @(posedge CLK) begin
@@ -557,7 +570,7 @@ module ARM(
                     .RESET(RESET),
                     .WE_PC(WE_PC_F),    
                     .PC_IN(PC_IN),
-                    .PC(PC_ARM)
+                    .PC(PC_F)
                 );
                 
      // Instantiate MCycle

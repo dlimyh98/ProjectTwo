@@ -32,11 +32,11 @@ module test_Wrapper #(
 	//reg  [7:0] CONSOLE_IN = 0;
 	//reg  CONSOLE_IN_valid = 0;
 	//wire CONSOLE_IN_ack;
-	reg  RESET = 0;					
+	//reg  RESET = 0;					
 	reg  CLK_undiv = 0;				
 	
 	// Instantiate UUT
-	Wrapper dut(.DIP(DIP), .LED_PC(LED_PC), .SEVENSEGHEX(SEVENSEGHEX), .RESET(RESET), .CLK(CLK_undiv)) ;
+	Wrapper dut(.DIP(DIP), .LED_PC(LED_PC), .SEVENSEGHEX(SEVENSEGHEX), .CLK(CLK_undiv)) ;
 	
 	// GENERATE CLOCK       
     always          
