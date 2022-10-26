@@ -39,272 +39,447 @@
 module ARM(
     input CLK,
     input RESET,
-    //input Interrupt,       // for optional future use
-    input [31:0] Instr,
-    input [31:0] ReadData,
-    output MemWrite,
-    output [31:0] PC,
-    output [31:0] ALUResult,
-    output [31:0] WriteData  // for checking what is at RD2
+    //input Interrupt,             // for optional future use
+    input [31:0] Instr_ARM,
+    input [31:0] ReadData_ARM,
+    output MemWrite_ARM,           // connected to MemWrite_E from CondLogic
+    output [31:0] PC_ARM,          // connected to PC from ProgramCounter
+    output [31:0] ALUResult_ARM,   // connected to ALUResult_E from ALU
+    output [31:0] WriteData_ARM    // connected to RD2_D from Decoder
     );
     
-    /************ RegFile signals ************/
+    /******************************** RegFile signals ********************************/
     //wire CLK ;
-    wire WE3 ;
-    wire [3:0] A1 ;
-    wire [3:0] A2 ;
-    wire [3:0] A3 ;
-    wire [31:0] WD3 ;
-    wire [31:0] R15 ;
-    wire [31:0] RD1 ;
-    wire [31:0] RD2 ;
+    //wire WE3_D;         , directly connected RegWrite_W to WE3_D
+    wire [3:0] RA1_D;
+    wire [3:0] RA2_D;
+    wire [3:0] WA3_D;
+    //wire [31:0] WD3_D;  , directly connected Result_W to WD3_D
+    //wire [31:0] R15_D;  , directly connected PCPlus8_D to R15_D
+    wire [31:0] RD1_D;
+    wire [31:0] RD2_D;
     
-    /************ Extend Module signals ************/
-    wire [1:0] ImmSrc ;
-    wire [23:0] InstrImm ;
-    wire [31:0] ExtImm ;
+    wire [3:0] Cond_D;    // need for CondLogic
+    wire [1:0] Sh_D;      // need for Shifter
+    wire [4:0] Shamt5_D;  // need for Shifter
+    wire [31:0] ShIn_D;   // need for Shifter
     
-    /************ Decoder signals ************/
-    wire [3:0] Rd ;
-    wire [1:0] Op ;
-    wire [5:0] Funct ;
-    wire [3:0] isMULDIV;
-    wire [3:0] isDIV;
-    //wire PCS ;
-    //wire RegW ;
-    //wire MemW ;
-    wire MemtoReg ;
-    wire ALUSrc ;
-    //wire [1:0] ImmSrc ;
-    wire [1:0] RegSrc ;
-    //wire NoWrite ;
-    //wire [3:0] ALUControl ;
-    //wire [3:0] FlagW ;
-    wire Start;
-    wire [1:0] MCycleOp;
-    wire ALUorMCycle;
-    wire isArithmeticOp;
-    wire isADC;
+    // Propagate to later stages
+    reg [3:0] RA1_E = 4'b0;      // Hazard Hardware
+    reg [3:0] RA2_E = 4'b0;      // Hazard Hardware
     
-    /************ CondLogic signals ************/
+    reg [3:0] WA3_E = 4'b0;      // delay Destination register along with Instruction
+    reg [3:0] WA3_M = 4'b0;
+    reg [3:0] WA3_W = 4'b0;
+    
+    reg [31:0] RD1_E = 32'b0;     // input for ALU / MCycle
+    reg [31:0] RD2_E = 32'b0;     // input for ALU / MCycle
+    
+    reg [3:0] Cond_E = 4'b0;     // input for CondLogic
+    
+    reg [1:0] Sh_E = 2'b0;       // shift-type for Shifter
+    reg [4:0] Shamt5_E = 5'b0;   // shift-amount for Shifter
+    reg [31:0] ShIn_E = 32'b0;   // input for Shifter
+         
+    
+    /******************************** Decoder signals ********************************/
+    wire [3:0] Rd_D;
+    wire [1:0] Op_D;
+    wire [5:0] Funct_D;
+    wire [3:0] isMULorDIV_D;
+    wire [3:0] isDIV_D;
+    wire PCS_D;
+    wire RegW_D;
+    wire MemW_D;
+    wire MemtoReg_D;
+    wire ALUSrc_D;
+    wire [1:0] ImmSrc_D;
+    wire [1:0] RegSrc_D;
+    wire NoWrite_D;
+    wire [3:0] ALUControl_D;
+    wire [3:0] FlagW_D;
+    wire Start_D;
+    wire [1:0] MCycleOp_D;
+    wire ALUorMCycle_D;
+    wire isArithmeticOp_D;
+    wire isADC_D;
+    
+    // Propagate to later stages
+    reg PCS_E = 1'b0;                // input for CondLogic
+    reg RegW_E = 1'b0;               // input for CondLogic
+    reg MemW_E = 1'b0;               // input for CondLogic
+    reg NoWrite_E = 1'b0;            // input for CondLogic
+    reg [3:0] FlagW_E = 4'b0;        // input for CondLogic
+
+    reg MemtoReg_E = 1'b0;
+    reg MemtoReg_M = 1'b0;
+    reg MemtoReg_W = 1'b0;           // MUX to determine Result_W, choose between ALU output or Data Memory output
+    
+    reg ALUSrc_E = 1'b0;             // MUX to determine SrcB for ALU
+    reg [3:0] ALUControl_E = 4'b0;   // determine operation for ALU
+    reg isArithmeticOp_E = 1'b0;     // check if ALU does Arithmetic operation
+    reg isADC_E = 1'b0;              // check if ALU is doing ADC operation
+    
+    reg Start_E = 1'b0;              // start signal for MCycle
+    reg [1:0] MCycleOp_E = 2'b0;     // determine operation for MCycle
+    reg ALUorMCycle_E = 1'b0;
+    reg ALUorMCycle_M = 1'b0;
+    reg ALUorMCycle_W = 1'b0;        // MUX to determine Result_W, choose between ALU output or MCycle output
+
+   
+    /******************************** CondLogic signals ********************************/
     //wire CLK ;
-    wire PCS ;
-    wire RegW ;
-    wire NoWrite ;
-    wire MemW ;
-    wire [3:0] FlagW ;
-    wire [3:0] Cond ;
-    //wire [3:0] ALUFlags,
-    wire PCSrc ;
-    wire RegWrite ; 
-    //wire MemWrite
-    wire C_Flag;
+    //wire PCS_E;            , directly connected from E register (propagated from Decoder) to CondLogic
+    //wire RegW_E;           , directly connected from E register (propagated from Decoder) to CondLogic
+    //wire NoWrite_E;        , directly connected from E register (propagated from Decoder) to CondLogic
+    //wire MemW_E;           , directly connected from E register (propagated from Decoder) to CondLogic
+    //wire [3:0] FlagW_E;    , directly connected from E register (propagated from Decoder) to CondLogic
+    //wire [3:0] Cond_E;     , directly connected from E register to CondLogic
+    //wire [3:0] ALUFlags_E  , directly connected from ALU to CondLogic
+    wire PCSrc_E;
+    wire RegWrite_E; 
+    wire MemWrite_E;
+    wire C_Flag_E;
+    
+    // Propagate to later stages
+    reg PCSrc_M = 1'b0;
+    reg PCSrc_W = 1'b0;        // MUX to choose between ResultW or PCPlus8_D
+    reg RegWrite_M = 1'b0;
+    reg RegWrite_W = 1'b0;     // signal to control writing to Register File
+    reg MemWrite_M = 1'b0;     // signal to control writing to Data Memory
+    
+    
+    /******************************** Extend Module signals ********************************/
+    //wire [1:0] ImmSrc_D;        , directly connected from Decoder to ExtendModule
+    wire [23:0] InstrImm_D;
+    wire [31:0] ExtImm_D;
+    
+    // Propagate to later stages
+    reg [31:0] ExtImm_E = 32'b0;      // input for ALU    
+    
     
     /************ Shifter signals (no Register-shifted Register support yet) ************/   
-    wire [1:0] Sh ;
-    wire [4:0] Shamt5 ;
-    wire [31:0] ShIn ;
-    wire [31:0] ShOut ;
-    wire Shifter_carryOut;
+    //wire [1:0] Sh_E;         , directly connected from E register to Shifter
+    //wire [4:0] Shamt5_E;     , directly connected from E register to Shifter
+    //wire [31:0] ShIn_E;      , directly connected from E register to Shifter
+    //wire C_Flag              , directly connected from CondLogic to Shifter
+    wire [31:0] ShOut_E;
+    wire Shifter_carryOut_E;
     
-    /************ ALU signals ************/
-    wire [31:0] Src_A ;
-    wire [31:0] Src_B ;
-    wire [3:0] ALUControl ;
-   // wire [31:0] ALUResult ;
-    wire [3:0] ALUFlags ;
     
-    /************ ProgramCounter signals ************/
-    //wire CLK ;
-    //wire RESET ;
-    wire WE_PC ;    
-    wire [31:0] PC_IN ;
-    //wire [31:0] PC ;
-     
-    /************ MCycle (Multiplication/Division) signals ************/
-    wire [31:0] Operand1;
-    wire [31:0] Operand2;
-    wire Busy;
-    wire [31:0] Result1;
-    wire [31:0] Result2;
-    
-    /************ Other internal signals ************/    
-    wire [31:0] PCPlus4 ;
-    wire [31:0] PCPlus8 ;
-    wire [31:0] Result ;
-    assign PCPlus4 = PC + 4;
-    assign PCPlus8 = PC + 8;
-    assign Result = (MemtoReg == 1'b1) ? ReadData :     // LDR instruction
-                    (ALUorMCycle == 1'b1) ? Result1 :   // MCycle instructions
-                    ALUResult;                          // DP and Branch instructions
-    
-    /************ Implement datapath connections ************/
-    assign WE_PC = ~Busy ; // Will need to control it for multi-cycle operations (Multiplication, Division) and/or Pipelining with hazard hardware.
-    assign WriteData = RD2;
-    
-    /////////////////////////// ExtendModule connections ///////////////////////////
-    assign InstrImm = Instr[23:0];
-     // ImmSrc already connected from Decoder to ExtendModule
-     // ExtImm already connected from ExtendModule to ALU
-     
-    /////////////////////////// Decoder connections ///////////////////////////
-    assign Rd = (Start == 1'b1) ? Instr[19:16] : Instr[15:12];
-    assign Op = Instr[27:26];
-    assign Funct = Instr[25:20];
-    assign isMULDIV = Instr[7:4];
-    assign isDIV = Instr[15:12];
-     // PCS, RegW, MemW, NoWrite, FlagW already connected from Decoder to CondLogic
-     // ALUControl already connected from Decoder to ALU
-     // MemtoReg, ALUSrc, ImmSrc, RegSrc used as multiplexer    
-     
-    /////////////////////////// RegFile connections ///////////////////////////
-    assign WE3 = RegWrite;
-                 
-    assign A1 = (RegSrc[0] == 1'b1) ? 4'd15 :    // Branch instructions
-                (Start == 1'b1) ? Instr[11:8] :  // UMUL, UDIV instructions
-                Instr[19:16];                    // DP, Memory instructions
-                
-    assign A2 = (RegSrc[1] == 1'b0) ? Instr[3:0] : Instr[15:12];
-    assign A3 = (Start == 1'b1) ? Instr[19:16] : Instr[15:12];
-    assign WD3 = Result;
-    assign R15 = PCPlus8;
-     // RD1 and RD2 computed inside RegFile, then used in ALU and Shifter
-     
-    /////////////////////////// CondLogic connections ///////////////////////////
-    assign Cond = Instr[31:28];
-     // PCS, RegW, NoWrite, MemW, FlagW already connected from Decoder to CondLogic
-     // ALUFlags already connected from ALU to CondLogic
-     // PCSrc used as multiplexer
-     // RegWrite already connected to Decoder (WE3)
-     // MemWrite already connected to ARM.v's output
-     
-    /////////////////////////// Shifter connections ///////////////////////////
-    assign Sh = Instr[6:5];
-    assign Shamt5 = Instr[11:7];
-    assign ShIn = RD2;
-     // ShOut already connected from Shifter to ALU
-    
-    /////////////////////////// ALU connections ///////////////////////////
-    assign Src_A = RD1;
-    assign Src_B = (ALUSrc == 1'b0) ? ShOut : ExtImm;
-     // ALUControl already connected from Decoder to ALU
+    /******************************** ALU signals ********************************/
      // ALUResult already connected from ALU to ARM.v's output
      // ALUFlags already connected from ALU to CondLogic
+    // wire [31:0] SrcA_E;       , directly connected from E register (propagated from Register File) to ALU
+    wire [31:0] SrcB_E;          // directly connected from E register (propagated from ExtendModule) OR Shifter
+    //wire [3:0] ALUControl_E;   , direcly connected from E register (propagated from Decoder) to ALU
+    //wire C_Flag;               , directly connected from CondLogic to ALU
+    //wire isArithmeticOp;       , directly connected from E register (propagated from Decoder) to ALU
+    //wire isADC;                , directly connected from E register (propagated from Decoder) to ALU
+    //wire shifter_carryOut;     , directly connected from Shifter to ALU
+    wire [31:0] ALUResult_E;     // ALUResult_ARM comes from here
+    wire [3:0] ALUFlags_E;       // connect from ALU to CondLogic
+    
+    // Propagate to later stages
+    reg [31:0] ALUResult_M = 32'b0;    // used for Data Forwarding (M->E) 
+    reg [31:0] ALUResult_W = 32'b0;    // used for potential ResultW, which can then be used for Data Forwarding (W->E)
+    
+    
+    /************ ProgramCounter signals ************/
+    //wire CLK;
+    //wire RESET;
+    wire WE_PC_F;    
+    wire [31:0] PC_IN;
+    //wire [31:0] PC_F;       , use PC_ARM instead
      
-   /////////////////////////// ProgramCounter connections ///////////////////////////
-   assign PC_IN = (PCSrc == 1'b0) ? PCPlus4 : Result;
+     
+    /************ MCycle (Multiplication/Division) signals ************/
+    wire [31:0] Operand1_E;
+    wire [31:0] Operand2_E;
+    wire Busy_E;
+    wire [31:0] Result1_E;
+    wire [31:0] Result2_E;
+    
+    // Propagate to later stages
+    reg [31:0] Result1_M = 32'b0;
+    reg [31:0] Result1_W = 32'b0;   // potential ResultW
+    
+    
+    /************ Other internal signals ************/
+    reg [31:0] ReadData_W = 32'b0;
+    always @ (*) begin
+        ReadData_W <= ReadData_ARM;
+    end
+    
+    wire [31:0] PCPlus4_F;
+    wire [31:0] PCPlus8_D;
+    wire [31:0] Result_W;
+    assign PCPlus4_F = PC_ARM + 4;
+    assign PCPlus8_D = PCPlus4_F + 4;
+    assign Result_W = (MemtoReg_W == 1'b1) ? ReadData_W :    // LDR instruction
+                    (ALUorMCycle_W == 1'b1) ? Result1_W :    // MCycle instructions
+                    ALUResult_W;                             // DP and Branch instructions
+    
+    
+    /************************************************ Implement datapath connections ************************************************/
+    assign WE_PC_F = ~Busy_E ; // Control for multi-cycle operations (Multiplication, Division) and/or Pipelining with hazard hardware.
+    assign MemWrite_ARM = MemWrite_E;
+    assign ALUResult_ARM = ALUResult_E;
+    assign WriteData_ARM = RD2_D;
+    
+    ///////////////////////////////////////////// RegFile connections /////////////////////////////////////////////
+    assign RA1_D = (RegSrc_D[0] == 1'b1) ? 4'd15 :        // Branch instructions
+                 (Start_D == 1'b1) ? Instr_ARM[11:8] :    // UMUL, UDIV instructions
+                 Instr_ARM[19:16];                        // DP, Memory instructions
+                
+    assign RA2_D = (RegSrc_D[1] == 1'b0) ? Instr_ARM[3:0] : Instr_ARM[15:12];
+    assign WA3_D = (Start_D == 1'b1) ? Instr_ARM[19:16] : Instr_ARM[15:12];
+     // RD1_D and RD2_D computed inside RegFile
+    
+    assign Cond_D = Instr_ARM[31:28];
+    assign Sh_D = Instr_ARM[6:5];
+    assign Shamt5_D = Instr_ARM[11:7];
+    assign ShIn_D = RD2_D;
+    
+    // RA1_E and RA2_E used as Hazard Hardware
+    always @ (*) begin
+        RA1_E <= RA1_D;
+        RA2_E <= RA2_D;
+    end
+    
+    // delay Destination register along with Instruction
+    always @ (*) begin
+        WA3_E <= WA3_D;
+        WA3_M <= WA3_E;
+        WA3_W <= WA3_M;
+    end
+    
+    // RD1 and RD2 propagates from RegFile to ALU/MCycle
+    always @ (*) begin
+        RD1_E <= RD1_D;
+        RD2_E <= RD2_D;
+    end
+    
+    // Cond propagates from D stage to CondLogic
+    always @ (*) begin
+        Cond_E <= Cond_D;
+    end
+    
+    // Sh, Shamt5, ShIn propagates from D stage to Shifter
+    always @ (*) begin
+        Sh_E <= Sh_D;
+        Shamt5_E <= Shamt5_D;
+        ShIn_E <= ShIn_D;
+    end
+         
+    ///////////////////////////////////////////// Decoder connections /////////////////////////////////////////////
+    assign Rd_D = (Start_D == 1'b1) ? Instr_ARM[19:16] : Instr_ARM[15:12];
+    assign Op_D = Instr_ARM[27:26];
+    assign Funct_D = Instr_ARM[25:20];
+    assign isMULorDIV_D = Instr_ARM[7:4];
+    assign isDIV_D = Instr_ARM[15:12];
+    
+    
+    // PCS, RegW, MemW, NoWrite, FlagW propagates from Decoder to CondLogic
+    always @ (*) begin
+        PCS_E <= PCS_D;
+        RegW_E <= RegW_D;
+        MemW_E <= MemW_D;
+        NoWrite_E <= NoWrite_D;
+        FlagW_E <= FlagW_D;
+    end
+    
+    // MemtoReg propagates from Decoder to W stage, used as MUX to determine Result_W
+    always @ (*) begin
+        MemtoReg_E <= MemtoReg_D;
+        MemtoReg_M <= MemtoReg_E;
+        MemtoReg_W <= MemtoReg_M;
+    end
+    
+    // ALUSrc, ALUControl, isArithmeticOp, isADC propagates from Decoder to ALU
+    always @ (*) begin
+        ALUSrc_E <= ALUSrc_D;
+        ALUControl_E <= ALUControl_D;
+        isArithmeticOp_E <= isArithmeticOp_D;
+        isADC_E <= isADC_D;
+    end
+    
+    // Start, MCycleOp propagates from Decoder to MCycle
+    always @ (*) begin
+        Start_E <= Start_D;
+        MCycleOp_E <= MCycleOp_D;
+    end
+    
+    // ALUorMCycle propagates from Decoder to W stage, used as MUX to determine Result_W
+    always @ (*) begin
+        ALUorMCycle_E <= ALUorMCycle_D;
+        ALUorMCycle_M <= ALUorMCycle_E;
+        ALUorMCycle_W <= ALUorMCycle_M;
+    end
+    
+    ///////////////////////////////////////////// CondLogic connections /////////////////////////////////////////////
+    // PCSrc propagates from CondLogic to W stage, used as MUX to determine PC_IN
+    always @ (*) begin
+       PCSrc_M <= PCSrc_E;
+       PCSrc_W <= PCSrc_M;
+    end
+     
+    // RegWrite propagates from CondLogic to W stage, used to control writing to Register File
+    always @ (*) begin
+       RegWrite_M <= RegWrite_E;
+       RegWrite_W <= RegWrite_M;
+    end
+     
+    // MemWrite propagates from CondLogic to M stage, used to control writing to Data Memory
+    always @ (*) begin
+       MemWrite_M <= MemWrite_E;
+    end
+         
+         
+    ///////////////////////////////////////////// ExtendModule connections /////////////////////////////////////////////
+    assign InstrImm_D = Instr_ARM[23:0];
+    
+    // ExtImm propagates from ExtendModule to ALU
+    always @ (*) begin
+        ExtImm_E <= ExtImm_D;
+    end
+     
+     
+   ///////////////////////////////////////////// Shifter connections /////////////////////////////////////////////
    
-   /////////////////////////// MCycle connections ///////////////////////////
-   // RD1 = Rs (operand2)
-   // RD2 = Rm (operand1)
-   // Rd = Rm * Rs, Rd = Rm / Rs
-   assign Operand1 = RD2;   // not making use of Shifter for MCycle
-   assign Operand2 = RD1;
+    
+   ///////////////////////////////////////////// ALU connections /////////////////////////////////////////////
+   assign SrcB_E = (ALUSrc_E == 1'b0) ? ShOut_E : ExtImm_E;
    
-   /************ Instantations ************/
+   // ALUResult propagates from ALU to M stage (M->E forwarding) 
+   //                              and W stage (potential Result_W, which can be used for W->E forwarding)
+   always @ (*) begin
+      ALUResult_M <= ALUResult_E;
+      ALUResult_W <= ALUResult_M;
+   end
+
+   ///////////////////////////////////////////// ProgramCounter connections /////////////////////////////////////////////
+   assign PC_IN = (PCSrc_W == 1'b0) ? PCPlus4_F : Result_W;
+   
+   
+   ///////////////////////////////////////////// MCycle connections /////////////////////////////////////////////
+    // RD1 = Rs (operand2)
+    // RD2 = Rm (operand1)
+    // Rd = Rm * Rs, Rd = Rm / Rs
+   assign Operand1_E = RD2_E;   // not making use of Shifter for MCycle
+   assign Operand2_E = RD1_E;
+   
+   // Result1 propagates to W stage, where it is potential Results_W
+   always @ (*) begin
+       Result1_M <= Result1_E;
+       Result1_W <= Result1_M;
+   end
+   
+   
+   /******************************************* Instantations *******************************************/
     
     // Instantiate RegFile
     RegFile RegFile1( 
-                    CLK,
-                    WE3,
-                    A1,
-                    A2,
-                    A3,
-                    WD3,
-                    R15,
-                    RD1,
-                    RD2     
-                );
-                
-     // Instantiate Extend Module
-    Extend Extend1(
-                    ImmSrc,
-                    InstrImm,
-                    ExtImm
+                    .CLK(CLK),
+                    .WE3(RegWrite_W),
+                    .A1(RA1_D),
+                    .A2(RA2_D),
+                    .A3(WA3_W),
+                    .WD3(Result_W),
+                    .R15(PCPlus8_D),
+                    .RD1(RD1_D),
+                    .RD2(RD2_D)     
                 );
                 
     // Instantiate Decoder
     Decoder Decoder1(
-                    Rd,
-                    Op,
-                    Funct,
-                    isMULDIV,
-                    isDIV,
-                    PCS,
-                    RegW,
-                    MemW,
-                    MemtoReg,
-                    ALUSrc,
-                    ImmSrc,
-                    RegSrc,
-                    NoWrite,
-                    ALUControl,
-                    FlagW,
-                    Start,
-                    MCycleOp,
-                    ALUorMCycle,
-                    isArithmeticOp,
-                    isADC
+                    .Rd(Rd_D),
+                    .Op(Op_D),
+                    .Funct(Funct_D),
+                    .isMULorDIV(isMULorDIV_D),
+                    .isDIV(isDIV_D),
+                    .PCS(PCS_D),
+                    .RegW(RegW_D),
+                    .MemW(MemW_D),
+                    .MemtoReg(MemtoReg_D),
+                    .ALUSrc(ALUSrc_D),
+                    .ImmSrc(ImmSrc_D),
+                    .RegSrc(RegSrc_D),
+                    .NoWrite(NoWrite_D),
+                    .ALUControl(ALUControl_D),
+                    .FlagW(FlagW_D),
+                    .Start(Start_D),
+                    .MCycleOp(MCycleOp_D),
+                    .ALUorMCycle(ALUorMCycle_D),
+                    .isArithmeticOp(isArithmeticOp_D),
+                    .isADC(isADC_D)
                 );
-                                
+                
     // Instantiate CondLogic
     CondLogic CondLogic1(
-                    CLK,
-                    PCS,
-                    RegW,
-                    NoWrite,
-                    MemW,
-                    FlagW,
-                    Cond,
-                    ALUFlags,
-                    PCSrc,
-                    RegWrite,
-                    MemWrite,
-                    C_Flag
+                    .CLK(CLK),
+                    .PCS(PCS_E),
+                    .RegW(RegW_E),
+                    .NoWrite(NoWrite_E),
+                    .MemW(MemW_E),
+                    .FlagW(FlagW_E),
+                    .Cond(Cond_E),
+                    .ALUFlags(ALUFlags_E),
+                    .PCSrc(PCSrc_E),
+                    .RegWrite(RegWrite_E),
+                    .MemWrite(MemWrite_E),
+                    .C_Flag(C_Flag_E)
                 );
+                
+     // Instantiate Extend Module
+    Extend Extend1(
+                    .ImmSrc(ImmSrc_D),
+                    .InstrImm(InstrImm_D),
+                    .ExtImm(ExtImm_D)
+                );                
                 
     // Instantiate Shifter        
     Shifter Shifter1(
-                    Sh,
-                    Shamt5,
-                    ShIn,
-                    C_Flag,
-                    ShOut,
-                    Shifter_carryOut
+                    .Sh(Sh_E),
+                    .Shamt5(Shamt5_E),
+                    .ShIn(ShIn_E),
+                    .current_CFlag(C_Flag_E),
+                    .ShOut(ShOut_E),
+                    .Shifter_carryOut(Shifter_carryOut_E)
                 );
                 
     // Instantiate ALU        
     ALU ALU1(
-               Src_A,
-               Src_B,
-               ALUControl,
-               C_Flag,
-               isArithmeticOp,
-               isADC,
-               Shifter_carryOut,
-               ALUResult,
-               ALUFlags
+               .Src_A(RD1_E),
+               .Src_B(SrcB_E),
+               .ALUControl(ALUControl_E),
+               .C_Flag(C_Flag_E),
+               .isArithmeticOp(isArithmeticOp_E),
+               .isADC(isADC_E),
+               .Shifter_carryOut(Shifter_carryOut_E),
+               .ALUResult(ALUResult_E),
+               .ALUFlags(ALUFlags_E)
              );                
     
     // Instantiate ProgramCounter    
     ProgramCounter ProgramCounter1(
-                    CLK,
-                    RESET,
-                    WE_PC,    
-                    PC_IN,
-                    PC  
+                    .CLK(CLK),
+                    .RESET(RESET),
+                    .WE_PC(WE_PC_F),    
+                    .PC_IN(PC_IN),
+                    .PC(PC_ARM)
                 );
                 
      // Instantiate MCycle
      MCycle MCycle1 (
-                     CLK,
-                     RESET,
-                     Start,
-                     MCycleOp,
-                     Operand1,
-                     Operand2,
-                     Result1,
-                     Result2,
-                     Busy
+                     .CLK(CLK),
+                     .RESET(RESET),
+                     .Start(Start_E),
+                     .MCycleOp(MCycleOp_E),
+                     .Operand1(Operand1_E),
+                     .Operand2(Operand2_E),
+                     .Result1(Result1_E),
+                     .Result2(Result2_E),
+                     .Busy(Busy_E)
                 );                 
 endmodule
