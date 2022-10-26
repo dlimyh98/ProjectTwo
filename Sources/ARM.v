@@ -42,7 +42,7 @@ module ARM(
     //input Interrupt,             // for optional future use
     input [31:0] Instr_ARM,
     input [31:0] ReadData_ARM,
-    output MemWrite_ARM,           // connected to MemWrite_E from CondLogic
+    output MemWrite_ARM,           // connected to MemWrite_M (propagated from CondLogic)
     output [31:0] PC_ARM,          // connected to PC from ProgramCounter
     output [31:0] ALUResult_ARM,   // connected to ALUResult_E from ALU
     output [31:0] WriteData_ARM    // connected to RD2_D from Decoder
@@ -208,7 +208,11 @@ module ARM(
     /************ Other internal signals ************/
     reg [31:0] ReadData_W = 32'b0;
     always @ (*) begin
-        ReadData_W <= ReadData_ARM;
+        if (RESET) begin
+            ReadData_W <= 32'b0;
+        end else begin
+            ReadData_W <= ReadData_ARM;
+        end
     end
     
     wire [31:0] PCPlus4_F;
@@ -223,7 +227,7 @@ module ARM(
     
     /************************************************ Implement datapath connections ************************************************/
     assign WE_PC_F = ~Busy_E ; // Control for multi-cycle operations (Multiplication, Division) and/or Pipelining with hazard hardware.
-    assign MemWrite_ARM = MemWrite_E;
+    assign MemWrite_ARM = MemWrite_M;
     assign ALUResult_ARM = ALUResult_E;
     assign WriteData_ARM = RD2_D;
     
@@ -243,33 +247,59 @@ module ARM(
     
     // RA1_E and RA2_E used as Hazard Hardware
     always @ (*) begin
-        RA1_E <= RA1_D;
-        RA2_E <= RA2_D;
+        if (RESET) begin
+            RA1_E <= 4'b0;
+            RA2_E <= 4'b0;
+        end else begin
+            RA1_E <= RA1_D;
+            RA2_E <= RA2_D;
+        end
     end
     
     // delay Destination register along with Instruction
     always @ (*) begin
-        WA3_E <= WA3_D;
-        WA3_M <= WA3_E;
-        WA3_W <= WA3_M;
+        if (RESET) begin
+            WA3_E <= 4'b0;
+            WA3_M <= 4'b0;
+            WA3_W <= 4'b0;
+        end else begin
+            WA3_E <= WA3_D;
+            WA3_M <= WA3_E;
+            WA3_W <= WA3_M;
+        end
     end
     
     // RD1 and RD2 propagates from RegFile to ALU/MCycle
     always @ (*) begin
-        RD1_E <= RD1_D;
-        RD2_E <= RD2_D;
+        if (RESET) begin
+            RD1_E <= 32'b0;
+            RD2_E <= 32'b0;
+        end else begin
+            RD1_E <= RD1_D;
+            RD2_E <= RD2_D;
+        end
     end
     
     // Cond propagates from D stage to CondLogic
     always @ (*) begin
-        Cond_E <= Cond_D;
+        if (RESET) begin
+            Cond_E <= 4'b0;
+        end else begin
+            Cond_E <= Cond_D;
+        end
     end
     
     // Sh, Shamt5, ShIn propagates from D stage to Shifter
     always @ (*) begin
-        Sh_E <= Sh_D;
-        Shamt5_E <= Shamt5_D;
-        ShIn_E <= ShIn_D;
+        if (RESET) begin
+            Sh_E <= 2'b0;
+            Shamt5_E <= 5'b0;
+            ShIn_E <= 32'b0;
+        end else begin
+            Sh_E <= Sh_D;
+            Shamt5_E <= Shamt5_D;
+            ShIn_E <= ShIn_D;
+        end
     end
          
     ///////////////////////////////////////////// Decoder connections /////////////////////////////////////////////
@@ -282,57 +312,103 @@ module ARM(
     
     // PCS, RegW, MemW, NoWrite, FlagW propagates from Decoder to CondLogic
     always @ (*) begin
-        PCS_E <= PCS_D;
-        RegW_E <= RegW_D;
-        MemW_E <= MemW_D;
-        NoWrite_E <= NoWrite_D;
-        FlagW_E <= FlagW_D;
+        if (RESET) begin
+            PCS_E <= 1'b0;
+            RegW_E <= 1'b0;
+            MemW_E <= 1'b0;
+            NoWrite_E <= 1'b0;
+            FlagW_E <= 4'b0;
+        end else begin
+            PCS_E <= PCS_D;
+            RegW_E <= RegW_D;
+            MemW_E <= MemW_D;
+            NoWrite_E <= NoWrite_D;
+            FlagW_E <= FlagW_D;
+        end
     end
     
     // MemtoReg propagates from Decoder to W stage, used as MUX to determine Result_W
     always @ (*) begin
-        MemtoReg_E <= MemtoReg_D;
-        MemtoReg_M <= MemtoReg_E;
-        MemtoReg_W <= MemtoReg_M;
+        if (RESET) begin
+            MemtoReg_E <= 1'b0;
+            MemtoReg_M <= 1'b0;
+            MemtoReg_W <= 1'b0;
+        end else begin
+            MemtoReg_E <= MemtoReg_D;
+            MemtoReg_M <= MemtoReg_E;
+            MemtoReg_W <= MemtoReg_M;
+        end
     end
     
     // ALUSrc, ALUControl, isArithmeticOp, isADC propagates from Decoder to ALU
     always @ (*) begin
-        ALUSrc_E <= ALUSrc_D;
-        ALUControl_E <= ALUControl_D;
-        isArithmeticOp_E <= isArithmeticOp_D;
-        isADC_E <= isADC_D;
+        if (RESET) begin
+            ALUSrc_E <= 1'b0;
+            ALUControl_E <= 4'b0;
+            isArithmeticOp_E <= 1'b0;
+            isADC_E <= 1'b0;
+        end else begin
+            ALUSrc_E <= ALUSrc_D;
+            ALUControl_E <= ALUControl_D;
+            isArithmeticOp_E <= isArithmeticOp_D;
+            isADC_E <= isADC_D;
+        end
     end
     
     // Start, MCycleOp propagates from Decoder to MCycle
     always @ (*) begin
-        Start_E <= Start_D;
-        MCycleOp_E <= MCycleOp_D;
+        if (RESET) begin
+            Start_E <= 1'b0;
+            MCycleOp_E <= 2'b0;
+        end else begin
+            Start_E <= Start_D;
+            MCycleOp_E <= MCycleOp_D;
+        end
     end
     
     // ALUorMCycle propagates from Decoder to W stage, used as MUX to determine Result_W
     always @ (*) begin
-        ALUorMCycle_E <= ALUorMCycle_D;
-        ALUorMCycle_M <= ALUorMCycle_E;
-        ALUorMCycle_W <= ALUorMCycle_M;
+        if (RESET) begin
+            ALUorMCycle_E <= 1'b0;
+            ALUorMCycle_M <= 1'b0;
+            ALUorMCycle_W <= 1'b0;
+        end else begin
+            ALUorMCycle_E <= ALUorMCycle_D;
+            ALUorMCycle_M <= ALUorMCycle_E;
+            ALUorMCycle_W <= ALUorMCycle_M;
+        end
     end
     
     ///////////////////////////////////////////// CondLogic connections /////////////////////////////////////////////
     // PCSrc propagates from CondLogic to W stage, used as MUX to determine PC_IN
     always @ (*) begin
-       PCSrc_M <= PCSrc_E;
-       PCSrc_W <= PCSrc_M;
+        if (RESET) begin
+            PCSrc_M <= 1'b0;
+            PCSrc_W <= 1'b0;
+        end else begin
+            PCSrc_M <= PCSrc_E;
+            PCSrc_W <= PCSrc_M;
+        end
     end
      
     // RegWrite propagates from CondLogic to W stage, used to control writing to Register File
     always @ (*) begin
-       RegWrite_M <= RegWrite_E;
-       RegWrite_W <= RegWrite_M;
+        if (RESET) begin
+            RegWrite_M <= 1'b0;
+            RegWrite_W <= 1'b0;
+        end else begin
+            RegWrite_M <= RegWrite_E;
+            RegWrite_W <= RegWrite_M;
+        end
     end
      
     // MemWrite propagates from CondLogic to M stage, used to control writing to Data Memory
     always @ (*) begin
-       MemWrite_M <= MemWrite_E;
+        if (RESET) begin
+            MemWrite_M <= 1'b0;
+        end else begin
+            MemWrite_M <= MemWrite_E;
+        end
     end
          
          
@@ -341,7 +417,11 @@ module ARM(
     
     // ExtImm propagates from ExtendModule to ALU
     always @ (*) begin
-        ExtImm_E <= ExtImm_D;
+        if (RESET) begin
+            ExtImm_E <= 32'b0;
+        end else begin
+            ExtImm_E <= ExtImm_D;
+        end
     end
      
      
@@ -354,8 +434,13 @@ module ARM(
    // ALUResult propagates from ALU to M stage (M->E forwarding) 
    //                              and W stage (potential Result_W, which can be used for W->E forwarding)
    always @ (*) begin
-      ALUResult_M <= ALUResult_E;
-      ALUResult_W <= ALUResult_M;
+       if (RESET) begin
+           ALUResult_M <= 32'b0;
+           ALUResult_W <= 32'b0;
+       end else begin
+           ALUResult_M <= ALUResult_E;
+           ALUResult_W <= ALUResult_M;
+       end
    end
 
    ///////////////////////////////////////////// ProgramCounter connections /////////////////////////////////////////////
@@ -371,8 +456,13 @@ module ARM(
    
    // Result1 propagates to W stage, where it is potential Results_W
    always @ (*) begin
-       Result1_M <= Result1_E;
-       Result1_W <= Result1_M;
+       if (RESET) begin
+           Result1_M <= 32'b0;
+           Result1_W <= 32'b0;
+       end else begin
+           Result1_M <= Result1_E;
+           Result1_W <= Result1_M;
+       end
    end
    
    
