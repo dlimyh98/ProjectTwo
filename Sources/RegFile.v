@@ -54,7 +54,7 @@ module RegFile(
     assign RD2 = (A2 == 4'b1111) ? R15 : RegBank[A2] ;   
     
     // write
-    always@(posedge CLK)
+    always@(negedge CLK)
     begin
         if((A3 != 4'b1111) & (WE3))
             RegBank[A3] <= WD3 ;

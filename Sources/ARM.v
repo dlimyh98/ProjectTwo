@@ -207,7 +207,7 @@ module ARM(
     
     /************ Other internal signals ************/
     reg [31:0] ReadData_W = 32'b0;
-    always @ (*) begin
+    always @(posedge CLK) begin
         if (RESET) begin
             ReadData_W <= 32'b0;
         end else begin
@@ -246,7 +246,7 @@ module ARM(
     assign ShIn_D = RD2_D;
     
     // RA1_E and RA2_E used as Hazard Hardware
-    always @ (*) begin
+    always @(posedge CLK) begin
         if (RESET) begin
             RA1_E <= 4'b0;
             RA2_E <= 4'b0;
@@ -257,7 +257,7 @@ module ARM(
     end
     
     // delay Destination register along with Instruction
-    always @ (*) begin
+    always @(posedge CLK) begin
         if (RESET) begin
             WA3_E <= 4'b0;
             WA3_M <= 4'b0;
@@ -270,7 +270,7 @@ module ARM(
     end
     
     // RD1 and RD2 propagates from RegFile to ALU/MCycle
-    always @ (*) begin
+    always @(posedge CLK) begin
         if (RESET) begin
             RD1_E <= 32'b0;
             RD2_E <= 32'b0;
@@ -281,7 +281,7 @@ module ARM(
     end
     
     // Cond propagates from D stage to CondLogic
-    always @ (*) begin
+    always @(posedge CLK) begin
         if (RESET) begin
             Cond_E <= 4'b0;
         end else begin
@@ -290,7 +290,7 @@ module ARM(
     end
     
     // Sh, Shamt5, ShIn propagates from D stage to Shifter
-    always @ (*) begin
+    always @(posedge CLK) begin
         if (RESET) begin
             Sh_E <= 2'b0;
             Shamt5_E <= 5'b0;
@@ -311,7 +311,7 @@ module ARM(
     
     
     // PCS, RegW, MemW, NoWrite, FlagW propagates from Decoder to CondLogic
-    always @ (*) begin
+    always @(posedge CLK) begin
         if (RESET) begin
             PCS_E <= 1'b0;
             RegW_E <= 1'b0;
@@ -328,7 +328,7 @@ module ARM(
     end
     
     // MemtoReg propagates from Decoder to W stage, used as MUX to determine Result_W
-    always @ (*) begin
+    always @(posedge CLK) begin
         if (RESET) begin
             MemtoReg_E <= 1'b0;
             MemtoReg_M <= 1'b0;
@@ -341,7 +341,7 @@ module ARM(
     end
     
     // ALUSrc, ALUControl, isArithmeticOp, isADC propagates from Decoder to ALU
-    always @ (*) begin
+    always @(posedge CLK) begin
         if (RESET) begin
             ALUSrc_E <= 1'b0;
             ALUControl_E <= 4'b0;
@@ -356,7 +356,7 @@ module ARM(
     end
     
     // Start, MCycleOp propagates from Decoder to MCycle
-    always @ (*) begin
+    always @(posedge CLK) begin
         if (RESET) begin
             Start_E <= 1'b0;
             MCycleOp_E <= 2'b0;
@@ -367,7 +367,7 @@ module ARM(
     end
     
     // ALUorMCycle propagates from Decoder to W stage, used as MUX to determine Result_W
-    always @ (*) begin
+    always @(posedge CLK) begin
         if (RESET) begin
             ALUorMCycle_E <= 1'b0;
             ALUorMCycle_M <= 1'b0;
@@ -381,7 +381,7 @@ module ARM(
     
     ///////////////////////////////////////////// CondLogic connections /////////////////////////////////////////////
     // PCSrc propagates from CondLogic to W stage, used as MUX to determine PC_IN
-    always @ (*) begin
+    always @(posedge CLK) begin
         if (RESET) begin
             PCSrc_M <= 1'b0;
             PCSrc_W <= 1'b0;
@@ -392,7 +392,7 @@ module ARM(
     end
      
     // RegWrite propagates from CondLogic to W stage, used to control writing to Register File
-    always @ (*) begin
+    always @(posedge CLK) begin
         if (RESET) begin
             RegWrite_M <= 1'b0;
             RegWrite_W <= 1'b0;
@@ -403,7 +403,7 @@ module ARM(
     end
      
     // MemWrite propagates from CondLogic to M stage, used to control writing to Data Memory
-    always @ (*) begin
+    always @(posedge CLK) begin
         if (RESET) begin
             MemWrite_M <= 1'b0;
         end else begin
@@ -416,7 +416,7 @@ module ARM(
     assign InstrImm_D = Instr_ARM[23:0];
     
     // ExtImm propagates from ExtendModule to ALU
-    always @ (*) begin
+    always @(posedge CLK) begin
         if (RESET) begin
             ExtImm_E <= 32'b0;
         end else begin
@@ -433,7 +433,7 @@ module ARM(
    
    // ALUResult propagates from ALU to M stage (M->E forwarding) 
    //                              and W stage (potential Result_W, which can be used for W->E forwarding)
-   always @ (*) begin
+   always @(posedge CLK) begin
        if (RESET) begin
            ALUResult_M <= 32'b0;
            ALUResult_W <= 32'b0;
@@ -455,7 +455,7 @@ module ARM(
    assign Operand2_E = RD1_E;
    
    // Result1 propagates to W stage, where it is potential Results_W
-   always @ (*) begin
+   always @(posedge CLK) begin
        if (RESET) begin
            Result1_M <= 32'b0;
            Result1_W <= 32'b0;
