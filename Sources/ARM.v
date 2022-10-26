@@ -145,7 +145,7 @@ module ARM(
     /////////////////////////// ExtendModule connections ///////////////////////////
     assign InstrImm = Instr[23:0];
      // ImmSrc already connected from Decoder to ExtendModule
-     // ExtImm already connected from Decoder to ALU
+     // ExtImm already connected from ExtendModule to ALU
      
     /////////////////////////// Decoder connections ///////////////////////////
     assign Rd = (Start == 1'b1) ? Instr[19:16] : Instr[15:12];
