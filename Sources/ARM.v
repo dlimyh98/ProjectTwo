@@ -75,6 +75,7 @@ module ARM(
     
     reg [31:0] RD1_E = 32'b0;     // input for ALU / MCycle
     reg [31:0] RD2_E = 32'b0;     // input for ALU / MCycle
+    reg [31:0] RD2_M = 32'b0;     // WriteData for Data Memory
     
     reg [3:0] Cond_E = 4'b0;     // input for CondLogic
     
@@ -234,10 +235,10 @@ module ARM(
         else ForwardA_E = 2'b00;
     end
     
-    always @ (Match_2E_M, Match_2E_W, RegWrite_M, RegWrite_W, ALUSrc_E) begin
-        if (Match_2E_M & RegWrite_M & ~ALUSrc_E)
+    always @ (Match_2E_M, Match_2E_W, RegWrite_M, RegWrite_W) begin
+        if (Match_2E_M & RegWrite_M)
             ForwardB_E = 2'b10;
-        else if (Match_2E_W & RegWrite_W & ~ALUSrc_E)
+        else if (Match_2E_W & RegWrite_W)
             ForwardB_E = 2'b01;
         else ForwardB_E = 2'b00;
     end
@@ -285,7 +286,7 @@ module ARM(
     assign Result_W = (MemtoReg_W == 1'b1) ? ReadData_W :   // LDR instruction
                     (ALUorMCycle_W == 1'b1) ? Result1_W :   // MCycle instructions
                     ALUResult_W;                            // DP and Branch instructions
-                    
+
 
     
     /************************************************ Implement datapath connections ************************************************/
@@ -293,43 +294,12 @@ module ARM(
     assign MemWrite_ARM = MemWrite_M;
     assign ALUResult_ARM = ALUResult_M;
     assign WriteData_ARM = ForwardM ? Result_W : RD2_M;
-=======
-    /************************************************ Hazard Hardware ************************************************/
-    ////////////////////////// Data Forwarding //////////////////////////
-    wire Match_1E_M;
-    wire Match_2E_M;
-    wire Match_1E_W;
-    wire Match_2E_W;
-    reg [1:0] ForwardA_E = 2'b0;
-    reg [1:0] ForwardB_E = 2'b0;
-    
-    assign Match_1E_M = (RA1_E == WA3_M);
-    assign Match_2E_M = (RA2_E == WA3_M);
-    assign Match_1E_W = (RA1_E == WA3_W);
-    assign Match_2E_W = (RA2_E == WA3_W);
-    
-    always @ (Match_1E_M, Match_1E_W, RegWrite_M, RegWrite_W) begin
-        if (Match_1E_M & RegWrite_M) 
-            ForwardA_E = 2'b10;
-        else if (Match_1E_W & RegWrite_W)
-            ForwardA_E = 2'b01;
-        else ForwardA_E = 2'b00;
-    end
-    
-    always @ (Match_2E_M, Match_2E_W, RegWrite_M, RegWrite_W) begin
-        if (Match_2E_M & RegWrite_M)
-            ForwardB_E = 2'b10;
-        else if (Match_2E_W & RegWrite_W)
-            ForwardB_E = 2'b01;
-        else ForwardB_E = 2'b00;
-    end
-    
-    
+
     /************************************************ Implement datapath connections ************************************************/
     assign WE_PC_F = ~Busy_E ; // Control for multi-cycle operations (Multiplication, Division) and/or Pipelining with hazard hardware.
     assign MemWrite_ARM = MemWrite_W;
     assign ALUResult_ARM = ALUResult_W;
->>>>>>> origin/Pipelining
+
     
     ///////////////////////////////////////////// RegFile connections /////////////////////////////////////////////
     assign RA1_D = (RegSrc_D[0] == 1'b1) ? 4'd15 :      // Branch instructions
