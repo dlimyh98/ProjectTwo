@@ -67,6 +67,7 @@ module ARM(
     // Propagate to later stages
     reg [3:0] RA1_E = 4'b0;      // Hazard Hardware
     reg [3:0] RA2_E = 4'b0;      // Hazard Hardware
+    reg [3:0] RA2_M = 4'b0;      // Hazard Hardware
     
     reg [3:0] WA3_E = 4'b0;      // delay Destination register along with Instruction
     reg [3:0] WA3_M = 4'b0;
@@ -204,6 +205,58 @@ module ARM(
     reg [31:0] Result1_M = 32'b0;
     reg [31:0] Result1_W = 32'b0;   // potential ResultW
     
+    /************************************************ Hazard Hardware ************************************************/
+    ////////////////////////// Data Forwarding //////////////////////////
+    wire Match_1E_M;
+    wire Match_2E_M;
+    wire Match_1E_W;
+    wire Match_2E_W;
+    wire Match_12D_E;
+    reg ForwardM = 1'b0; 
+    reg [1:0] ForwardA_E = 2'b0;
+    reg [1:0] ForwardB_E = 2'b0;
+    reg ldrstall = 1'b0;
+    reg Stall_F = 1'b0;
+    reg Stall_D = 1'b0;
+    reg Flush_E = 1'b0;
+    
+    assign Match_1E_M = (RA1_E == WA3_M);
+    assign Match_2E_M = (RA2_E == WA3_M);
+    assign Match_1E_W = (RA1_E == WA3_W);
+    assign Match_2E_W = (RA2_E == WA3_W);
+    assign Match_12D_E = (RA1_D == WA3_E) || (RA2_D == WA3_E);  // Source Reg in D same as Rd in Ex
+    
+    always @ (Match_1E_M, Match_1E_W, RegWrite_M, RegWrite_W) begin
+        if (Match_1E_M & RegWrite_M) 
+            ForwardA_E = 2'b10;
+        else if (Match_1E_W & RegWrite_W)
+            ForwardA_E = 2'b01;
+        else ForwardA_E = 2'b00;
+    end
+    
+    always @ (Match_2E_M, Match_2E_W, RegWrite_M, RegWrite_W, ALUSrc_E) begin
+        if (Match_2E_M & RegWrite_M & ~ALUSrc_E)
+            ForwardB_E = 2'b10;
+        else if (Match_2E_W & RegWrite_W & ~ALUSrc_E)
+            ForwardB_E = 2'b01;
+        else ForwardB_E = 2'b00;
+    end
+    
+    // Check Mem-mem copy     
+    always @ (RA2_M, MemWrite_M, MemtoReg_W & RegWrite_W) begin
+        // check M stage for STR, WB has LDR and LDR has executed
+        ForwardM = (RA2_M == WA3_W) & MemWrite_M & MemtoReg_W & RegWrite_W;
+    end
+    
+    ////////////////////////// Load and Use //////////////////////////
+    always @ (WA3_E, MemtoReg_E) begin
+        // LDR in E and event: Match_12D_E
+        ldrstall = MemtoReg_E & RegWrite_E & Match_12D_E;
+        Stall_F = ldrstall;
+        Stall_D = ldrstall;
+        Flush_E = ldrstall;
+        
+    end
     
     /************ Other internal signals ************/
     wire [31:0] PCPlus4_F;
@@ -214,7 +267,11 @@ module ARM(
     always @(posedge CLK) begin
         if (RESET) begin
             Instr_D <= 32'b0;
-        end else begin
+        end  
+        else if (Stall_D == 1) begin
+            Instr_D <= Instr_D;
+        end
+        else begin
             Instr_D <= Instr_ARM;
         end
     end
@@ -235,42 +292,13 @@ module ARM(
                     (ALUorMCycle_W == 1'b1) ? Result1_W :   // MCycle instructions
                     ALUResult_W;                            // DP and Branch instructions
                     
-    /************************************************ Hazard Hardware ************************************************/
-    ////////////////////////// Data Forwarding //////////////////////////
-    wire Match_1E_M;
-    wire Match_2E_M;
-    wire Match_1E_W;
-    wire Match_2E_W;
-    reg [1:0] ForwardA_E = 2'b0;
-    reg [1:0] ForwardB_E = 2'b0;
-    
-    assign Match_1E_M = (RA1_E == WA3_M);
-    assign Match_2E_M = (RA2_E == WA3_M);
-    assign Match_1E_W = (RA1_E == WA3_W);
-    assign Match_2E_W = (RA2_E == WA3_W);
-    
-    always @ (Match_1E_M, Match_1E_W, RegWrite_M, RegWrite_W) begin
-        if (Match_1E_M & RegWrite_M) 
-            ForwardA_E = 2'b10;
-        else if (Match_1E_W & RegWrite_W)
-            ForwardA_E = 2'b01;
-        else ForwardA_E = 2'b00;
-    end
-    
-    always @ (Match_2E_M, Match_2E_W, RegWrite_M, RegWrite_W, ALUSrc_E) begin
-        if (Match_2E_M & RegWrite_M & ~ALUSrc_E)
-            ForwardB_E = 2'b10;
-        else if (Match_2E_W & RegWrite_W & ~ALUSrc_E)
-            ForwardB_E = 2'b01;
-        else ForwardB_E = 2'b00;
-    end
-    
+
     
     /************************************************ Implement datapath connections ************************************************/
-    assign WE_PC_F = ~Busy_E ; // Control for multi-cycle operations (Multiplication, Division) and/or Pipelining with hazard hardware.
+    assign WE_PC_F = ~Busy_E & ~Stall_F; // Control for multi-cycle operations (Multiplication, Division) and/or Pipelining with hazard hardware.
     assign MemWrite_ARM = MemWrite_M;
     assign ALUResult_ARM = ALUResult_M;
-    assign WriteData_ARM = RD2_M;
+    assign WriteData_ARM = ForwardM ? Result_W : RD2_M;
     
     ///////////////////////////////////////////// RegFile connections /////////////////////////////////////////////
     assign RA1_D = (RegSrc_D[0] == 1'b1) ? 4'd15 :      // Branch instructions
@@ -286,12 +314,14 @@ module ARM(
     assign Shamt5_D = Instr_D[11:7];
     assign ShIn_D = RD2_D;
     
-    // RA1_E and RA2_E used as Hazard Hardware
+    // RA1_E, RA2_E, RA2_M used as Hazard Hardware
     always @(posedge CLK) begin
         if (RESET) begin
+            RA2_M <= 4'b0;
             RA1_E <= 4'b0;
             RA2_E <= 4'b0;
         end else begin
+            RA2_M <= RA2_E;
             RA1_E <= RA1_D;
             RA2_E <= RA2_D;
         end
@@ -362,11 +392,11 @@ module ARM(
             NoWrite_E <= 1'b0;
             FlagW_E <= 4'b0;
         end else begin
-            PCS_E <= PCS_D;
-            RegW_E <= RegW_D;
-            MemW_E <= MemW_D;
+            PCS_E <= Flush_E ? 0 : PCS_D;
+            RegW_E <= Flush_E ? 0 : RegW_D;
+            MemW_E <= Flush_E? 0 : MemW_D;
             NoWrite_E <= NoWrite_D;
-            FlagW_E <= FlagW_D;
+            FlagW_E <= Flush_E ? 0 : FlagW_D;
         end
     end
     
