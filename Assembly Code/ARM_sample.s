@@ -23,8 +23,8 @@
 		
 main_loop
 		MOV R5, #0xFFFFFFFF    ; reset OVERFLOW_AMOUNT
-		LDR R6, [R1]		   ; R6 = DIPS, use this if manually flipping switches onboard
-		;LDR R6, DIPS_SIMUL    ; use this to simulate DIPS (0x2 = 0b0000_0000_0000_0010)
+		;LDR R6, [R1]		   ; R6 = DIPS, use this if manually flipping switches onboard
+		LDR R6, DIPS_SIMUL     ; use this to simulate DIPS (0x2 = 0b0000_0000_0000_0010)
 		LDR R7, ZERO           ; reset result seen on SEVENSEG
 		MOV R0, R0             ; Load and Use Hazard, stall ONCE
 		
@@ -46,11 +46,16 @@ main_loop
 		;MOV R0, R0
 		MOV R0, R0              ; Load and Use Hazard, stall ONCE
 		
+<<<<<<< HEAD
+=======
+		LDR R5, EOR_MASK        ; R5 = 0xFF...F9
+>>>>>>> origin/main
 		EOR R7, R7, R5          ; R7 should be 0xFB
 		;MOV R0, R0
 		;MOV R0, R0
 
 		RSB R7, R7, #0x000000FF ; R7 = 0xFF - 0xFB = 0x04
+<<<<<<< HEAD
 		;MOV R0, R0
 		;MOV R0, R0
 		
@@ -64,6 +69,15 @@ main_loop
 		SBC R7, R5, R7			; R7 = 0xFFFFFFF9 - 0xFFFFFFFA - ~(0x0) = 0xFFFFFFFE (Since C_flag is 0)
 		MOV R0, R0
 		MOV R0, R0              ; Mem-Mem Copy, stall TWICE
+=======
+		TEQ R7, #00000004		; C flag is UNCHANGED, still 1)
+		RSC R7, R7, #0x000000FF ; R7 = 0xFF - 0x04 - ~(0x1) = 0xFB		(Since C_flag is 1)
+		
+		ADDS R7, R5, #00000001  ; R7 = 0xFF...FA (C_flag changes to 0, since NO carryOut)
+		
+		TST R5, R7				; R5 & R7. C flag is UNAFFECTED since NO SHIFTING
+		SBC R7, R5, R7			; R7 = 0xFFFFFFF9 - 0xFFFFFFFA - ~(0x0) = 0xFFFFFFFE (Since C_flag is 0)
+>>>>>>> origin/main
 		
         STR R7, [R3]            ; display R7 on SEVENSEG
 
