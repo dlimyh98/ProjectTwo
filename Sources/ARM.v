@@ -244,13 +244,13 @@ module ARM(
     end
     
     // Check Mem-mem copy     
-    always @ (RA2_M, MemWrite_M, MemtoReg_W & RegWrite_W) begin
+    always @ (RA2_M, MemWrite_M, MemtoReg_W , RegWrite_W , WA3_W) begin
         // check M stage for STR, WB has LDR and LDR has executed
         ForwardM = (RA2_M == WA3_W) & MemWrite_M & MemtoReg_W & RegWrite_W;
     end
     
     ////////////////////////// Load and Use //////////////////////////
-    always @ (WA3_E, MemtoReg_E) begin
+    always @ (WA3_E, MemtoReg_E, RegWrite_E, Match_12D_E) begin
         // LDR in E and event: Match_12D_E
         ldrstall = MemtoReg_E & RegWrite_E & Match_12D_E;
         Stall_F = ldrstall;
@@ -287,19 +287,10 @@ module ARM(
                     (ALUorMCycle_W == 1'b1) ? Result1_W :   // MCycle instructions
                     ALUResult_W;                            // DP and Branch instructions
 
-
-    
     /************************************************ Implement datapath connections ************************************************/
     assign WE_PC_F = ~Busy_E & ~Stall_F; // Control for multi-cycle operations (Multiplication, Division) and/or Pipelining with hazard hardware.
-    assign MemWrite_ARM = MemWrite_M;
-    assign ALUResult_ARM = ALUResult_M;
-    assign WriteData_ARM = ForwardM ? Result_W : RD2_M;
-
-    /************************************************ Implement datapath connections ************************************************/
-    assign WE_PC_F = ~Busy_E ; // Control for multi-cycle operations (Multiplication, Division) and/or Pipelining with hazard hardware.
     assign MemWrite_ARM = MemWrite_W;
     assign ALUResult_ARM = ALUResult_W;
-
     
     ///////////////////////////////////////////// RegFile connections /////////////////////////////////////////////
     assign RA1_D = (RegSrc_D[0] == 1'b1) ? 4'd15 :      // Branch instructions
@@ -523,7 +514,7 @@ module ARM(
                         (ForwardB_E == 2'b01) ? ALUResult_W :
                         (ForwardB_E == 2'b10) ? ALUResult_M : 32'b0;
                         
-   assign WriteData_ARM = WriteData_W;
+   assign WriteData_ARM = ForwardM ? Result_W : WriteData_W;
                         
    always @(posedge CLK) begin
        if (RESET) begin
