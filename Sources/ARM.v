@@ -41,11 +41,11 @@ module ARM(
     input RESET,
     //input Interrupt,             // for optional future use
     input [31:0] Instr_ARM,
-    input [31:0] ReadData_ARM,     // equivalent to ReadData_M
-    output MemWrite_ARM,           // connected to MemWrite_M (from CondLogic)
+    input [31:0] ReadData_ARM,     // equivalent to ReadData_W
+    output MemWrite_ARM,           // connected to MemWrite_W (from CondLogic)
     output [31:0] PC_F,
-    output [31:0] ALUResult_ARM,   // connected to ALUResult_M from ALU
-    output [31:0] WriteData_ARM    // connected to RD2_M, propagated from Register File
+    output [31:0] ALUResult_ARM,   // connected to ALUResult_W from ALU
+    output [31:0] WriteData_ARM    // connected to WriteData_W
     );
     
     /******************************** RegFile signals ********************************/
@@ -74,7 +74,6 @@ module ARM(
     
     reg [31:0] RD1_E = 32'b0;     // input for ALU / MCycle
     reg [31:0] RD2_E = 32'b0;     // input for ALU / MCycle
-    reg [31:0] RD2_M = 32'b0;     // WriteData for Data Memory
     
     reg [3:0] Cond_E = 4'b0;     // input for CondLogic
     
@@ -148,6 +147,7 @@ module ARM(
     reg RegWrite_M = 1'b0;
     reg RegWrite_W = 1'b0;     // signal to control writing to Register File
     reg MemWrite_M = 1'b0;     // signal to control writing to Data Memory
+    reg MemWrite_W = 1'b0;
     
     
     /******************************** Extend Module signals ********************************/
@@ -219,15 +219,9 @@ module ARM(
         end
     end
     
+    wire [31:0] ReadData_W;
+    assign ReadData_W = ReadData_ARM;
     
-    reg [31:0] ReadData_W = 32'b0;
-    always @(posedge CLK) begin
-        if (RESET) begin
-            ReadData_W <= 32'b0;
-        end else begin
-            ReadData_W <= ReadData_ARM;
-        end
-    end
     
     assign PCPlus4_F = PC_F + 4;
     assign PCPlus8_D = PCPlus4_F;
@@ -257,10 +251,10 @@ module ARM(
         else ForwardA_E = 2'b00;
     end
     
-    always @ (Match_2E_M, Match_2E_W, RegWrite_M, RegWrite_W, ALUSrc_E) begin
-        if (Match_2E_M & RegWrite_M & ~ALUSrc_E)
+    always @ (Match_2E_M, Match_2E_W, RegWrite_M, RegWrite_W) begin
+        if (Match_2E_M & RegWrite_M)
             ForwardB_E = 2'b10;
-        else if (Match_2E_W & RegWrite_W & ~ALUSrc_E)
+        else if (Match_2E_W & RegWrite_W)
             ForwardB_E = 2'b01;
         else ForwardB_E = 2'b00;
     end
@@ -268,9 +262,8 @@ module ARM(
     
     /************************************************ Implement datapath connections ************************************************/
     assign WE_PC_F = ~Busy_E ; // Control for multi-cycle operations (Multiplication, Division) and/or Pipelining with hazard hardware.
-    assign MemWrite_ARM = MemWrite_M;
-    assign ALUResult_ARM = ALUResult_M;
-    assign WriteData_ARM = RD2_M;
+    assign MemWrite_ARM = MemWrite_W;
+    assign ALUResult_ARM = ALUResult_W;
     
     ///////////////////////////////////////////// RegFile connections /////////////////////////////////////////////
     assign RA1_D = (RegSrc_D[0] == 1'b1) ? 4'd15 :      // Branch instructions
@@ -315,11 +308,9 @@ module ARM(
         if (RESET) begin
             RD1_E <= 32'b0;
             RD2_E <= 32'b0;
-            RD2_M <= 32'b0;
         end else begin
             RD1_E <= RD1_D;
             RD2_E <= RD2_D;
-            RD2_M <= RD2_E;
         end
     end
     
@@ -449,8 +440,10 @@ module ARM(
     always @(posedge CLK) begin
         if (RESET) begin
             MemWrite_M <= 1'b0;
+            MemWrite_W <= 1'b0;
         end else begin
             MemWrite_M <= MemWrite_E;
+            MemWrite_W <= MemWrite_M;
         end
     end
          
@@ -475,12 +468,33 @@ module ARM(
    assign SrcA_E = (ForwardA_E == 2'b10) ? ALUResult_M :
                    (ForwardA_E == 2'b01) ? ALUResult_W : RD1_E;
                    
-   assign SrcB_E = (ForwardB_E == 2'b10) ? ALUResult_M :
-                   (ForwardB_E == 2'b01) ? ALUResult_W :
-                   (ALUSrc_E == 1'b0)    ? ShOut_E : ExtImm_E;
+ 
+   assign SrcB_E = (ForwardB_E == 2'b10 && ALUSrc_E == 1'b0) ? ALUResult_M :
+                   (ForwardB_E == 2'b01 && ALUSrc_E == 1'b0) ? ALUResult_W :
+                   (ForwardB_E == 2'b00 && ALUSrc_E == 1'b0) ? ShOut_E : ExtImm_E;
                                           
    // ALUResult propagates from ALU to M stage (used for M->E forwarding) 
    //                              and W stage (potential Result_W, which can be used for W->E forwarding)
+   wire [31:0] WriteData_E;
+   reg [31:0] WriteData_M = 32'b0;
+   reg [31:0] WriteData_W = 32'b0;
+   
+   assign WriteData_E = (ForwardB_E == 2'b00) ? ALUResult_E :
+                        (ForwardB_E == 2'b01) ? ALUResult_W :
+                        (ForwardB_E == 2'b10) ? ALUResult_M : 32'b0;
+                        
+   assign WriteData_ARM = WriteData_W;
+                        
+   always @(posedge CLK) begin
+       if (RESET) begin
+           WriteData_M <= 32'b0;
+           WriteData_W <= 32'b0;
+       end else begin
+           WriteData_M <= WriteData_E;
+           WriteData_W <= WriteData_M;
+       end
+   end   
+   
    always @(posedge CLK) begin
        if (RESET) begin
            ALUResult_M <= 32'b0;

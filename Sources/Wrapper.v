@@ -107,27 +107,25 @@ initial begin
 			INSTR_MEM[14] = 32'hE0877005; 
 			INSTR_MEM[15] = 32'hE59F51E4; 
 			INSTR_MEM[16] = 32'hE1A00000; 
-			INSTR_MEM[17] = 32'hE0277005; 
-			INSTR_MEM[18] = 32'hE26770FF; 
-			INSTR_MEM[19] = 32'hE3370004; 
-			INSTR_MEM[20] = 32'hE2E770FF; 
-			INSTR_MEM[21] = 32'hE2957001; 
-			INSTR_MEM[22] = 32'hE1150007; 
-			INSTR_MEM[23] = 32'hE0C57007; 
-			INSTR_MEM[24] = 32'hE1A00000; 
-			INSTR_MEM[25] = 32'hE1A00000; 
-			INSTR_MEM[26] = 32'hE5837000; 
-			INSTR_MEM[27] = 32'hEAFFFFE9; 
+			INSTR_MEM[17] = 32'hE1A00000; 
+			INSTR_MEM[18] = 32'hE0277005; 
+			INSTR_MEM[19] = 32'hE26770FF; 
+			INSTR_MEM[20] = 32'hE3370004; 
+			INSTR_MEM[21] = 32'hE2E770FF; 
+			INSTR_MEM[22] = 32'hE2957001; 
+			INSTR_MEM[23] = 32'hE1150007; 
+			INSTR_MEM[24] = 32'hE0C57007; 
+			INSTR_MEM[25] = 32'hE5837000; 
+			INSTR_MEM[26] = 32'hEAFFFFEA; 
+			INSTR_MEM[27] = 32'hE1A00000; 
 			INSTR_MEM[28] = 32'hE1A00000; 
 			INSTR_MEM[29] = 32'hE1A00000; 
 			INSTR_MEM[30] = 32'hE1A00000; 
-			INSTR_MEM[31] = 32'hE1A00000; 
-			INSTR_MEM[32] = 32'hEAFFFFFE; 
-			for(i = 33; i < 128; i = i+1) begin 
+			INSTR_MEM[31] = 32'hEAFFFFFE; 
+			for(i = 32; i < 128; i = i+1) begin 
 				INSTR_MEM[i] = 32'h0; 
 			end
 end
-
 
 //----------------------------------------------------------------
 // Data (Constant) Memory
