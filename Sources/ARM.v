@@ -171,8 +171,8 @@ module ARM(
     /******************************** ALU signals ********************************/
      // ALUResult already connected from ALU to ARM.v's output
      // ALUFlags already connected from ALU to CondLogic
-    // wire [31:0] SrcA_E;       , directly connected from E register (propagated from Register File) to ALU
-    wire [31:0] SrcB_E;          // directly connected from E register (propagated from ExtendModule) OR Shifter
+    wire [31:0] SrcA_E;          // E->E forwarding (propagated from Register File), M->E forwarding, W->E forwarding
+    wire [31:0] SrcB_E;          // E->E forwarding (propagated from ExtendModule), M->E forwarding, W->E forwarding OR Shifter
     //wire [3:0] ALUControl_E;   , direcly connected from E register (propagated from Decoder) to ALU
     //wire C_Flag;               , directly connected from CondLogic to ALU
     //wire isArithmeticOp;       , directly connected from E register (propagated from Decoder) to ALU
@@ -234,6 +234,36 @@ module ARM(
     assign Result_W = (MemtoReg_W == 1'b1) ? ReadData_W :   // LDR instruction
                     (ALUorMCycle_W == 1'b1) ? Result1_W :   // MCycle instructions
                     ALUResult_W;                            // DP and Branch instructions
+                    
+    /************************************************ Hazard Hardware ************************************************/
+    ////////////////////////// Data Forwarding //////////////////////////
+    wire Match_1E_M;
+    wire Match_2E_M;
+    wire Match_1E_W;
+    wire Match_2E_W;
+    reg [1:0] ForwardA_E = 2'b0;
+    reg [1:0] ForwardB_E = 2'b0;
+    
+    assign Match_1E_M = (RA1_E == WA3_M);
+    assign Match_2E_M = (RA2_E == WA3_M);
+    assign Match_1E_W = (RA1_E == WA3_W);
+    assign Match_2E_W = (RA2_E == WA3_W);
+    
+    always @ (Match_1E_M, Match_1E_W, RegWrite_M, RegWrite_W) begin
+        if (Match_1E_M & RegWrite_M) 
+            ForwardA_E = 2'b10;
+        else if (Match_1E_W & RegWrite_W)
+            ForwardA_E = 2'b01;
+        else ForwardA_E = 2'b00;
+    end
+    
+    always @ (Match_2E_M, Match_2E_W, RegWrite_M, RegWrite_W, ALUSrc_E) begin
+        if (Match_2E_M & RegWrite_M & ~ALUSrc_E)
+            ForwardB_E = 2'b10;
+        else if (Match_2E_W & RegWrite_W & ~ALUSrc_E)
+            ForwardB_E = 2'b01;
+        else ForwardB_E = 2'b00;
+    end
     
     
     /************************************************ Implement datapath connections ************************************************/
@@ -285,7 +315,7 @@ module ARM(
         if (RESET) begin
             RD1_E <= 32'b0;
             RD2_E <= 32'b0;
-            RD2_M <= RD2_E;
+            RD2_M <= 32'b0;
         end else begin
             RD1_E <= RD1_D;
             RD2_E <= RD2_D;
@@ -442,9 +472,14 @@ module ARM(
    
     
    ///////////////////////////////////////////// ALU connections /////////////////////////////////////////////
-   assign SrcB_E = (ALUSrc_E == 1'b0) ? ShOut_E : ExtImm_E;
-   
-   // ALUResult propagates from ALU to M stage (M->E forwarding) 
+   assign SrcA_E = (ForwardA_E == 2'b10) ? ALUResult_M :
+                   (ForwardA_E == 2'b01) ? ALUResult_W : RD1_E;
+                   
+   assign SrcB_E = (ForwardB_E == 2'b10) ? ALUResult_M :
+                   (ForwardB_E == 2'b01) ? ALUResult_W :
+                   (ALUSrc_E == 1'b0)    ? ShOut_E : ExtImm_E;
+                                          
+   // ALUResult propagates from ALU to M stage (used for M->E forwarding) 
    //                              and W stage (potential Result_W, which can be used for W->E forwarding)
    always @(posedge CLK) begin
        if (RESET) begin
@@ -553,7 +588,7 @@ module ARM(
                 
     // Instantiate ALU        
     ALU ALU1(
-               .Src_A(RD1_E),
+               .Src_A(SrcA_E),
                .Src_B(SrcB_E),
                .ALUControl(ALUControl_E),
                .C_Flag(C_Flag_E),
