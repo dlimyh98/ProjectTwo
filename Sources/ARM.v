@@ -290,7 +290,7 @@ module ARM(
 
     /************************************************ Implement datapath connections ************************************************/
     assign WE_PC_F = ~Busy_E & ~Stall_F; // Control for multi-cycle operations (Multiplication, Division) and/or Pipelining with hazard hardware.
-    assign MemWrite_ARM = MemWrite_M;   // or MemWrite_W?
+    assign MemWrite_ARM = MemWrite_W;
     assign ALUResult_ARM = ALUResult_W;
     
     ///////////////////////////////////////////// RegFile connections /////////////////////////////////////////////
@@ -513,15 +513,16 @@ module ARM(
                         (ForwardB_E == 2'b01) ? Result_W :
                         (ForwardB_E == 2'b10) ? ALUResult_M : 32'b0;
                         
-   assign WriteData_ARM = ForwardM ? Result_W : WriteData_M;
-   //assign WriteData_ARM = WriteData_W;
+                        
+   //assign WriteData_ARM = ForwardM ? Result_W : WriteData_M;
+   assign WriteData_ARM = WriteData_W;
                         
    always @(posedge CLK) begin
        if (RESET) begin
            WriteData_M <= 32'b0;
            WriteData_W <= 32'b0;
        end else begin
-           WriteData_M <= WriteData_E;
+           WriteData_M <= (ForwardM == 1'b0) ? WriteData_E : Result_W;
            WriteData_W <= WriteData_M;
        end
    end   

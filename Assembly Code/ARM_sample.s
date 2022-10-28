@@ -27,7 +27,7 @@ main_loop
 		LDR R6, DIPS_SIMUL     ; use this to simulate DIPS (0x2 = 0b0000_0000_0000_0010)
 		LDR R7, ZERO           ; reset result seen on SEVENSEG
 		
-		;MOV R0, R0             ; Load and Use Hazard (LDR R6, [R1] -> ADDS R7, R5, R6)
+		;MOV R0, R0            ; Load and Use Hazard (LDR R6, [R1] -> ADDS R7, R5, R6)
 		
 		ADDS R7, R5, R6         ; purposefully cause an UNSIGNED overflow (C flag set to 1), R7 should be 0x1 now			   
 		;MOV R0, R0
@@ -44,8 +44,7 @@ main_loop
 		
 		ADD R7, R7, R5          ; R7 should be 0xFF...F02                                   
 		LDR R5, EOR_MASK        ; R5 = 0xFF...F9.             D @ 16 , E @ 17.1 , M @ 17.2, WB @ 18
-		
-		;MOV R0, R0              ; Load and Use Hazard
+		;MOV R0, R0             ; Load and Use Hazard
 		;MOV R0, R0
 
 		EOR R7, R7, R5          ; R7 should be 0xFB			  D @ 17.1 - 17.2 ,	E @ 18 , M @ 19, WB @ 20	
@@ -68,8 +67,8 @@ main_loop
 		
 		LDR R5, SEVENSEG		
 		STR R5, [R3]				
+		;MOV R0, R0		       ; Mem-Mem Copy, stall TWICE
 		;MOV R0, R0
-		;MOV R0, R0             ; Mem-Mem Copy, stall TWICE
 		
         
 		STR R7, [R3]            ; display R7 on SEVENSEG 		
