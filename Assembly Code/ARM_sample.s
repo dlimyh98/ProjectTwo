@@ -42,16 +42,15 @@ main_loop
 		;MOV R0, R0
 		;MOV R0, R0
 		
-		ADD R7, R7, R5          ; R7 should be 0xFF...F02
-		LDR R5, EOR_MASK        ; R5 = 0xFF...F9
+		ADD R7, R7, R5          ; R7 should be 0xFF...F02                                   
+		LDR R5, EOR_MASK        ; R5 = 0xFF...F9.             D @ 16 , E @ 17.1 , M @ 17.2, WB @ 18
 		
-		MOV R0, R0              ; Load and Use Hazard
-		MOV R0, R0
-		
-		LDR R5, EOR_MASK        ; R5 = 0xFF...F9
-		EOR R7, R7, R5          ; R7 should be 0xFB
+		;MOV R0, R0              ; Load and Use Hazard
 		;MOV R0, R0
+
+		EOR R7, R7, R5          ; R7 should be 0xFB			  D @ 17.1 - 17.2 ,	E @ 18 , M @ 19, WB @ 20	
 		;MOV R0, R0
+		;MOV R0, R0				; Data Forwarding Hazard
 
 		RSB R7, R7, #0x000000FF ; R7 = 0xFF - 0xFB = 0x04
 		;MOV R0, R0
@@ -65,8 +64,6 @@ main_loop
 		
 		TST R5, R7				; R5 & R7. C flag is UNAFFECTED since NO SHIFTING		
 		SBC R7, R5, R7			; R7 = 0xFFFFFFF9 - 0xFFFFFFFA - ~(0x0) = 0xFFFFFFFE (Since C_flag is 0)
-		MOV R0, R0
-		MOV R0, R0              ; Mem-Mem Copy, stall TWICE
 
 		TEQ R7, #00000004		; C flag is UNCHANGED, still 1)
 		RSC R7, R7, #0x000000FF ; R7 = 0xFF - 0x04 - ~(0x1) = 0xFB		(Since C_flag is 1)
@@ -74,11 +71,16 @@ main_loop
 		ADDS R7, R5, #00000001  ; R7 = 0xFF...FA (C_flag changes to 0, since NO carryOut)
 		
 		TST R5, R7				; R5 & R7. C flag is UNAFFECTED since NO SHIFTING
-		SBC R7, R5, R7			; R7 = 0xFFFFFFF9 - 0xFFFFFFFA - ~(0x0) = 0xFFFFFFFE (Since C_flag is 0)
-		;MOV R0, R0
-		;MOV R0, R0
+		SBC R7, R5, R7			; R7 = 0xFFFFFFF9 - 0xFFFFFFFA - ~(0x0) = 0xFFFFFFFE (Since C_flag is 0) 
 		
-        STR R7, [R3]            ; display R7 on SEVENSEG
+		LDR R5, SEVENSEG		
+		STR R5, [R3]				
+		;MOV R0, R0
+		;MOV R0, R0             ; Mem-Mem Copy, stall TWICE
+		
+        
+		STR R7, [R3]            ; display R7 on SEVENSEG 		
+		
 
 		B main_loop
 		MOV R0, R0
