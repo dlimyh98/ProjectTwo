@@ -58,12 +58,12 @@ main_loop
 		
 		TEQ R7, #00000004		; C flag is UNCHANGED, still 1
 		RSC R7, R7, #0x000000FF ; R7 = 0xFF - 0x04 - ~(0x1) = 0xFB		(Since C_flag is 1)
-		ADDS R7, R5, #00000001  ; R7 = 0xFF...FA (C_flag changes to 0, since NO carryOut)
+		ADDS R7, R7, #00000001  ; R7 = 0xFC (C_flag changes to 0, since NO carryOut)
 		;MOV R0, R0
 		;MOV R0, R0
 		
 		TST R5, R7				; R5 & R7. C flag is UNAFFECTED since NO SHIFTING		
-		SBC R7, R5, R7			; R7 = 0xFFFFFFF9 - 0xFFFFFFFA - ~(0x0) = 0xFFFFFFFE (Since C_flag is 0)
+		SBC R7, R5, R7			; R7 = 0xFFFFFFF9 - 0xFC - ~(0x0) = 0xFFFF_FEFC (Since C_flag is 0)
 
 		
 		LDR R5, SEVENSEG		

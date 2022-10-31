@@ -50,7 +50,7 @@ module test_Wrapper #(
                 - MVSCSS should
                     - successfully execute due to C flag being 1 (from BICS)
                     - set N flag to 1
-                - SEVENSEG should be 0xFFFFFFFE
+                - SEVENSEG should be 0xFFFF_FEFC for DIP = 16'b0...10
            */
            DIP = 16'b0000_0000_0000_0010;
        end
