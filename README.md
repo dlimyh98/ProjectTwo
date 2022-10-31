@@ -7,15 +7,16 @@
 3. EOR - Logical EOR `EOR R7, R7, R5`
 4. MOV - Move `MOV R5, #0xFFFFFFFF`
 5. MVN - Move Not `MVNCSS R5, R8`
-6. RSB - Reverse Subtract `R7, R7, #0x000000FF`
-7. RSC - Reverse Subtract w/ Carry `R7, R7, #0x000000FF`
-8. SBC - Subtract w/ Carry `R7, R5, R7`
-9. TEQ - Test Equivalence `R7, #00000004`
-10. TST - Test (same as ANDS) `R5, R7`
+6. RSB - Reverse Subtract `RSB R7, R7, #0x000000FF`
+7. RSC - Reverse Subtract w/ Carry `RSC R7, R7, #0x000000FF`
+8. SBC - Subtract w/ Carry `SBC R7, R5, R7`
+9. TEQ - Test Equivalence `TEQ R7, #00000004`
+10. TST - Test (same as ANDS) `TST R5, R7`
 
-### POTENTIAL IMPROVEMENTS ###
-1. Pipelining (Data Forwarding DONE)
-2. Shifter will affect C flag (DONE)
+### IMPROVEMENTS IMPLEMENTED ###
+1. Pipelining (Data Forwarding, Mem-Mem Copy, Load and Use, Control Hazard)
+2. Shifter affects C flag
+3. C flag and V flag set separately
 
 ## From Lab 2 (w.r.t Lab 2's .asm code) ##
 ### Memory
