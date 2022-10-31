@@ -71,12 +71,12 @@ main_loop
 		;MOV R0, R0
 		
         
-		STR R7, [R3]            ; display R7 on SEVENSEG 		
+		STR R7, [R3]           ; display R7 on SEVENSEG 		
 		
 
 		B main_loop
-		MOV R0, R0
-		MOV R0, R0
+		;MOV R0, R0            ; Control Hazard
+		;MOV R0, R0
 		MOV R0, R0
 		MOV R0, R0
 		

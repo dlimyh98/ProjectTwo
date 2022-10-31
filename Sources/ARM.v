@@ -144,7 +144,8 @@ module ARM(
     wire C_Flag_E;
     
     // Propagate to later stages
-    reg PCSrc_M = 1'b0;
+     // PCSrc_M and PCSrc_W unused if using early BTA method
+    reg PCSrc_M = 1'b0;          
     reg PCSrc_W = 1'b0;        // MUX to choose between ResultW or PCPlus8_D
     reg RegWrite_M = 1'b0;
     reg RegWrite_W = 1'b0;     // signal to control writing to Register File
@@ -250,15 +251,22 @@ module ARM(
     end
     
     ////////////////////////// Load and Use //////////////////////////
-    always @ (WA3_E, MemtoReg_E, RegWrite_E, Match_12D_E) begin
+    always @ (WA3_E, MemtoReg_E, RegWrite_E, Match_12D_E, PCSrc_E) begin
         // LDR in E and event: Match_12D_E
         // Do a 1 cycle stall
         ldrstall = MemtoReg_E & RegWrite_E & Match_12D_E;
         Stall_F = ldrstall;
         Stall_D = ldrstall;
-        Flush_E = ldrstall;
-        
+        Flush_E = ldrstall | PCSrc_E;    // account for Control Hazard
     end
+    
+    ////////////////////////// Control Hazard (disregard LDR PC, ...) //////////////////////////
+    reg Flush_D = 1'b0;
+    
+    always @(PCSrc_E) begin
+        Flush_D = PCSrc_E;
+    end
+    
     
     /************ Other internal signals ************/
     wire [31:0] PCPlus4_F;
@@ -269,7 +277,10 @@ module ARM(
     always @(posedge CLK) begin
         if (RESET) begin
             Instr_D <= 32'b0;
-        end  
+        end
+       else if (Flush_D == 1'b1) begin
+            Instr_D <= 32'b0;
+        end
         else if (Stall_D == 1) begin
             Instr_D <= Instr_D;
         end
@@ -538,7 +549,9 @@ module ARM(
    end
 
    ///////////////////////////////////////////// ProgramCounter connections /////////////////////////////////////////////
-   assign PC_IN = (PCSrc_W == 1'b0) ? PCPlus4_F : Result_W;
+   //assign PC_IN = (PCSrc_W == 1'b0) ? PCPlus4_F : Result_W;     // normal BTA (from W stage)
+   assign PC_IN = (PCSrc_E == 1'b0) ? PCPlus4_F : ALUResult_E;    // early BTA (from E stage)
+   
    
    
    ///////////////////////////////////////////// MCycle connections /////////////////////////////////////////////
