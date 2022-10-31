@@ -23,8 +23,8 @@
 		
 main_loop
 		MOV R5, #0xFFFFFFFF    ; reset OVERFLOW_AMOUNT
-		;LDR R6, [R1]		   ; R6 = DIPS, use this if manually flipping switches onboard
-		LDR R6, DIPS_SIMUL     ; use this to simulate DIPS (0x2 = 0b0000_0000_0000_0010)
+		LDR R6, [R1]		   ; R6 = DIPS, use this if manually flipping switches onboard
+		;LDR R6, DIPS_SIMUL     ; use this to simulate DIPS (0x2 = 0b0000_0000_0000_0010)
 		LDR R7, ZERO           ; reset result seen on SEVENSEG
 		
 		;MOV R0, R0            ; Load and Use Hazard (LDR R6, [R1] -> ADDS R7, R5, R6)
@@ -39,6 +39,7 @@ main_loop
 		
 		BICS R7, R7, R8, LSR #7  ; R7 = R7 & ~(R8 >> #7) = 0x2, (C flag should be set to 1, V flag should NOT be set together with it)
 		MVNCSS R5, R8            ; R5 = ~R8 = 0xFF...F00 (N flag should be set to 1)
+		MVNVS R5, R3             ; should not execute, since V flag not set
 		;MOV R0, R0
 		;MOV R0, R0
 		
